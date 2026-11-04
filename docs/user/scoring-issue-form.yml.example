@@ -1,0 +1,20 @@
+# Example only; not enabled. Place as .github/ISSUE_TEMPLATE/score-submission.yml in the PUBLIC
+# scoring repo. The scorer reads the CSV from the issue body as data.
+name: Score a detector
+description: Submit a Seeker v2.0 detector output CSV for scoring (docs/user/SUBMISSION.md)
+title: "[score] "
+labels: ["score-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One scored submission per 24 h and 5 in total per GitHub account and release.
+        Paste the CSV below (header lines, then id,infected,score,count,locations).
+  - type: textarea
+    id: csv
+    attributes:
+      label: Submission CSV
+      description: "The full file, including the header lines that start with a hash sign."
+      render: text
+    validations:
+      required: true

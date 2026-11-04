@@ -1,0 +1,110 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+env:
+  # Pinned Odin III commit this repo builds against (bumped by hand; see docs/plans).
+  ODIN3_COMMIT: 42394c3d12cf6b3c29cc8d4f10c12c0166b401e8
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    # Drafts skip CI. A PR touching only docs/** and *.md reports code=false, so build/test jobs skip
+    # (a skipped job satisfies a required check); the docs job still runs.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.f.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: f
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          code=true
+          if [ "$EVENT" = pull_request ]; then
+            if git diff --name-only "$BASE...$HEAD" | grep -qvE '^(docs/|.*\.md$)'; then code=true; else code=false; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+  lint:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # PRs: 3.12 only; push to main: both.
+        python: ${{ fromJSON(github.event_name == 'pull_request' && '["3.12"]' || '["3.11","3.12"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install ruff mypy cffi numpy
+      # mypy needs odin3.py's source to type-check Simulation/Design usage; a full Odin III build
+      # is not needed for that (only the test job's unittest run needs libodin3.so).
+      - uses: actions/checkout@v4
+        with:
+          repository: drpaj12/odin3
+          ref: ${{ env.ODIN3_COMMIT }}
+          path: odin3-src
+      - run: ruff check lemanruss tests
+      - run: mypy --strict lemanruss tests
+        env:
+          MYPYPATH: ${{ github.workspace }}/odin3-src/plugins/python
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # PRs: 3.12 only; push to main: both.
+        python: ${{ fromJSON(github.event_name == 'pull_request' && '["3.12"]' || '["3.11","3.12"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/checkout@v4
+        with:
+          repository: drpaj12/odin3
+          ref: ${{ env.ODIN3_COMMIT }}
+          path: odin3-src
+      # No release wheel fits: the code and tests find the binary and tools by the source-tree layout
+      # ($ODIN3_LIB/../odin3, parents[2]/tools), which the wheel does not have. So the release build
+      # is cached on the pinned commit and only rebuilt when ODIN3_COMMIT changes.
+      - name: Cache the Odin III release build
+        id: odin-cache
+        uses: actions/cache@v4
+        with:
+          path: odin3-src/build/release
+          key: odin3-release-${{ runner.os }}-${{ env.ODIN3_COMMIT }}
+      - name: Build Odin III (release)
+        if: steps.odin-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build bison flex
+          git submodule update --init --recursive
+          cmake --preset release
+          cmake --build --preset release --target odin3
+        working-directory: odin3-src
+      - run: sudo apt-get install -y --no-install-recommends iverilog
+      - run: pip install --no-deps -e .
+      - run: pip install cffi numpy
+      - run: python -m unittest discover -s tests -t . -v
+        env:
+          ODIN3_ROOT: ${{ github.workspace }}/odin3-src
+          ODIN3_LIB: ${{ github.workspace }}/odin3-src/build/release/libodin3.so
+          PYTHONPATH: ${{ github.workspace }}/odin3-src/plugins/python
+          MYPYPATH: ${{ github.workspace }}/odin3-src/plugins/python

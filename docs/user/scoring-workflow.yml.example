@@ -1,0 +1,66 @@
+# Example only; not enabled. Place as .github/workflows/score.yml in the PUBLIC scoring repo.
+# Safety rules (spec section 7):
+#  - trigger: issues opened; NEVER pull_request_target, NEVER check out anything from the issue;
+#  - runs only code from the default branch;
+#  - the issue body is data: it reaches the scorer through an environment variable and a file,
+#    never through ${{ }} interpolation inside a shell line;
+#  - the answer key is an encrypted secret (base64 tar.gz of KEY/), unpacked to the runner temp
+#    directory and never printed or uploaded;
+#  - the rate limit key is the authenticated issue author.
+name: score
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency: score-ledger  # the ledger is one file: one run at a time
+
+jobs:
+  score:
+    if: contains(github.event.issue.labels.*.name, 'score-request')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4          # default branch only (issues events use it)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --no-deps -e .
+      - name: Fetch the private ledger
+        # The ledger lives in a private repo (or branch) the maintainer controls.
+        env:
+          LEDGER_TOKEN: ${{ secrets.LEDGER_TOKEN }}
+          LEDGER_REPO: ${{ secrets.LEDGER_REPO }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${LEDGER_TOKEN}@github.com/${LEDGER_REPO}.git" "$RUNNER_TEMP/ledger"
+      - name: Unpack the key and score
+        env:
+          KEY_B64: ${{ secrets.SEEKER_KEY_B64 }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          SUBMITTER: ${{ github.event.issue.user.login }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/key" "$RUNNER_TEMP/out"
+          printf '%s' "$KEY_B64" | base64 -d | tar -xz -C "$RUNNER_TEMP/key"
+          cp "$RUNNER_TEMP/ledger/ledger.jsonl" "$RUNNER_TEMP/key/ledger.jsonl" 2>/dev/null || true
+          lemanruss extract-csv > "$RUNNER_TEMP/submission.csv" <<< "$ISSUE_BODY"
+          set +e
+          lemanruss score "$RUNNER_TEMP/submission.csv" --key "$RUNNER_TEMP/key" \
+            --submitter "$SUBMITTER" --out-dir "$RUNNER_TEMP/out" > "$RUNNER_TEMP/stdout.txt"
+          echo "rc=$?" >> "$GITHUB_ENV"
+          if [ -f "$RUNNER_TEMP/out/report.md" ]; then cp "$RUNNER_TEMP/out/report.md" "$RUNNER_TEMP/comment.md"; else cp "$RUNNER_TEMP/stdout.txt" "$RUNNER_TEMP/comment.md"; fi
+          cp "$RUNNER_TEMP/key/ledger.jsonl" "$RUNNER_TEMP/ledger/ledger.jsonl" 2>/dev/null || true
+      - name: Save the ledger
+        run: |
+          git -C "$RUNNER_TEMP/ledger" add ledger.jsonl
+          git -C "$RUNNER_TEMP/ledger" -c user.name=scorer -c user.email=scorer@example.invalid commit -m "ledger" || true
+          git -C "$RUNNER_TEMP/ledger" push || true
+      - name: Post the report and close
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$NUMBER" --body-file "$RUNNER_TEMP/comment.md" --repo "$GITHUB_REPOSITORY"
+          gh issue close "$NUMBER" --repo "$GITHUB_REPOSITORY"

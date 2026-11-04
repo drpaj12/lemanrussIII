@@ -1,0 +1,31 @@
+# andornot.o3lib: the AND / OR / NOT gate library of Seeker v2.0 rc4 set C (inputs A B, output Y).
+library andornot
+
+cell BUF gate area 1
+  in A 1 ; out Y 1
+  fn Y = A
+end
+cell INV gate area 1
+  in A 1 ; out Y 1
+  fn Y = ~A
+end
+cell AND2 gate area 1
+  in A 1 ; in B 1 ; out Y 1
+  fn Y = A & B
+end
+cell OR2 gate area 1
+  in A 1 ; in B 1 ; out Y 1
+  fn Y = A | B
+end
+cell TIE0 gate area 1
+  out Y 1
+  fn Y = 1'b0
+end
+cell TIE1 gate area 1
+  out Y 1
+  fn Y = 1'b1
+end
+cell DFFP gate area 4
+  in D 1 ; in C 1 clock ; out Q 1
+  seq Q <= D @ posedge C init x
+end

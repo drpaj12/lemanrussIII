@@ -1,0 +1,43 @@
+{
+ "circuits": [
+  {
+   "base": "darkriscv",
+   "bytes": 3188793,
+   "file": "circuits/pp0001.blif.gz",
+   "id": "pp0001",
+   "sha256": "a8efc13df4cf79304b149184c331a263129afc9572047d04bbac1e34715061c9"
+  },
+  {
+   "base": "darkriscv",
+   "bytes": 3189624,
+   "file": "circuits/pp0002.blif.gz",
+   "id": "pp0002",
+   "sha256": "b08069c5b02b0f0069fed83f48c0ef5e88404b6cc4ea549d7819551917b0a301"
+  },
+  {
+   "base": "mcu",
+   "bytes": 7788413,
+   "file": "circuits/pp0003.blif.gz",
+   "id": "pp0003",
+   "sha256": "f9246b6ecffb80465a3037b293994cfe0d4e76ab6beefaca194256b01e151b7e"
+  },
+  {
+   "base": "mcu",
+   "bytes": 7788407,
+   "file": "circuits/pp0004.blif.gz",
+   "id": "pp0004",
+   "sha256": "43c6f18d73ed06f4851f34fef522c7b3ab0cf6449c5d4b89c451e9af832d5328"
+  }
+ ],
+ "counts": {
+  "by_base": {
+   "darkriscv": 2,
+   "mcu": 2
+  },
+  "circuits": 4
+ },
+ "family": "seeker-proc-v2.0-pilot3",
+ "release": "seeker-proc-v2.0-pilot3",
+ "restructurings_attempted": [],
+ "schema": 2
+}

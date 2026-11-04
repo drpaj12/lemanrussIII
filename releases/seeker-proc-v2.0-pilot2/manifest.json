@@ -1,0 +1,59 @@
+{
+ "circuits": [
+  {
+   "base": "darkriscv",
+   "bytes": 3173287,
+   "file": "circuits/pp0001.blif.gz",
+   "id": "pp0001",
+   "sha256": "e08df962aa55ab60590256428eae2e4e0f8da14e40fb99c0f6f596518494bec8"
+  },
+  {
+   "base": "darkriscv",
+   "bytes": 3173795,
+   "file": "circuits/pp0002.blif.gz",
+   "id": "pp0002",
+   "sha256": "79b98eb169655927f4375dee39c69851a93e1f93ca795457e1a5bcf4ff69dad4"
+  },
+  {
+   "base": "mcu",
+   "bytes": 7783117,
+   "file": "circuits/pp0003.blif.gz",
+   "id": "pp0003",
+   "sha256": "e8147c461f8283eb0851411d8dd28005f7a8192d01a9ff328b312831572e35b3"
+  },
+  {
+   "base": "mcu",
+   "bytes": 7785612,
+   "file": "circuits/pp0004.blif.gz",
+   "id": "pp0004",
+   "sha256": "4e67efb95a2d0405d5a268fb59a9c7b5a0e4b79918210c9dcfbe57b4d2401395"
+  },
+  {
+   "base": "mcu",
+   "bytes": 7783116,
+   "file": "circuits/pp0005.blif.gz",
+   "id": "pp0005",
+   "sha256": "178b52c8095a3189c714ddf6e1b9d7ede32e70fc0da5f95914dd8e4ae7039763"
+  },
+  {
+   "base": "mcu",
+   "bytes": 7783498,
+   "file": "circuits/pp0006.blif.gz",
+   "id": "pp0006",
+   "sha256": "bb8ab93ac92a7ee68dd4b8d0acce59fb76660c590dccd1730313bf9cf52eecac"
+  }
+ ],
+ "counts": {
+  "by_base": {
+   "darkriscv": 2,
+   "mcu": 4
+  },
+  "circuits": 6
+ },
+ "family": "seeker-proc-v2.0-pilot2",
+ "release": "seeker-proc-v2.0-pilot2",
+ "restructurings_attempted": [
+  "strash"
+ ],
+ "schema": 2
+}

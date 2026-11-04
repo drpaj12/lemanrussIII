@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lemanruss"
+version = "0.1.0"
+description = "Leman Russ III: hardware Trojan library, insertion and Seeker's Dilemma style benchmarks (part of Yggdrasil III)"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = ["odin3", "numpy"]
+
+[project.optional-dependencies]
+gnn = ["torch>=2.3", "torch_geometric>=2.5"]
+
+[project.scripts]
+lemanruss = "lemanruss.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["lemanruss*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+
+[[tool.mypy.overrides]]
+# Odin III's own binding is imported from a source checkout (MYPYPATH), not an installed typed
+# package: use its annotations for our call sites but do not report errors inside it.
+module = ["odin3"]
+follow_untyped_imports = true
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# torch and PyG are optional (the `gnn` extra) and absent in the lint job: treat them as Any
+# everywhere so lint results do not depend on whether they are installed.
+module = ["torch", "torch.*", "torch_geometric", "torch_geometric.*"]
+follow_imports = "skip"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["lemanruss.detect.gnn"]
+disallow_subclassing_any = false
