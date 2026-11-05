@@ -61,6 +61,27 @@ class RegMatchTest(unittest.TestCase):
         assert problem is not None
         self.assertIn("NOT equivalent", problem)
 
+    def test_inverted_phase_latch_is_proved(self) -> None:
+        # same machine, but latch s0 is stored complemented (init 1, inverter in fanin and fanout)
+        flipped = SOURCE.replace(".latch n1 s0 re clk 3", ".names n1 m1\n0 1\n.latch m1 s0b re clk 1\n"
+                                 ".names s0b s0\n0 1")
+        src = SOURCE.replace(".latch n1 s0 re clk 3", ".latch n1 s0 re clk 0")
+        # order hint: latch k of the source with latch k of the mapped text
+        from lemanruss.htl.regmatch import cut_equivalent
+        cut_equivalent(src, flipped, "order")
+
+    def test_wrong_init_is_rejected(self) -> None:
+        from lemanruss.htl.regmatch import cut_equivalent
+        src = SOURCE.replace(".latch n1 s0 re clk 3", ".latch n1 s0 re clk 0")
+        wrong = SOURCE.replace(".latch n1 s0 re clk 3", ".latch n1 s0 re clk 1")  # no inversion
+        with self.assertRaises(NotApplicable):
+            cut_equivalent(src, wrong, "order")
+
+    def test_unknown_init_reads_as_zero(self) -> None:
+        from lemanruss.htl.regmatch import cut_equivalent
+        src = SOURCE.replace(".latch n1 s0 re clk 3", ".latch n1 s0 re clk 0")
+        cut_equivalent(src, SOURCE, "order")  # init 0 against 3 (unknown), as equiv-check reads it
+
     def test_flat_parser_rejects_subcircuits(self) -> None:
         with self.assertRaises(NotApplicable):
             parse_flat(".model m\n.subckt x a=b\n.end\n")
