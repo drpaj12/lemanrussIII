@@ -88,5 +88,40 @@ class RegMatchTest(unittest.TestCase):
             parse_flat(".model m\n.subckt x a=b\n.end\n")
 
 
+MERGED_A = """.model m
+.inputs a clk
+.outputs y
+.latch a r1 re clk 0
+.latch a r2 re clk 0
+.names r1 r2 y
+10 1
+.end
+"""
+MERGED_B = ".model m\n.inputs a clk\n.outputs y\n.names y\n.end\n"  # y is always 0
+INIT_A = ".model m\n.inputs a clk\n.outputs y\n.latch a q re clk {init}\n.names q y\n1 1\n.end\n"
+
+
+@unittest.skipUnless(ROOT and Path(ROOT, "tools/equiv-check/equiv-check").is_file(),
+                     "needs ODIN3_ROOT with tools/equiv-check")
+class ScorrTest(unittest.TestCase):
+    def test_merged_registers_are_proved_by_signal_correspondence(self) -> None:
+        from lemanruss.htl.regmatch import cut_equivalent, scorr_equivalent
+        scorr_equivalent(MERGED_A, MERGED_B)
+        with self.assertRaises(NotApplicable):  # no latch matching exists: counts differ
+            cut_equivalent(MERGED_A, MERGED_B, "order")
+        self.assertEqual(equivalence_check(MERGED_A, MERGED_B, 60), (None, "scorr-cec"))
+
+    def test_different_initial_value_is_not_proved(self) -> None:
+        from lemanruss.htl.regmatch import scorr_equivalent
+        scorr_equivalent(INIT_A.format(init=0), INIT_A.format(init=0))
+        with self.assertRaises(NotApplicable):
+            scorr_equivalent(INIT_A.format(init=0), INIT_A.format(init=1))
+
+    def test_different_function_is_not_proved(self) -> None:
+        from lemanruss.htl.regmatch import scorr_equivalent
+        with self.assertRaises(NotApplicable):
+            scorr_equivalent(MERGED_A, MERGED_A.replace("10 1", "11 1"))
+
+
 if __name__ == "__main__":
     unittest.main()

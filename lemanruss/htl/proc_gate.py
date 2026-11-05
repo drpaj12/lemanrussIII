@@ -19,10 +19,11 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from lemanruss.htl.r4check import equiv_check_bin
-from lemanruss.htl.regmatch import NotApplicable, chain_equivalent
+from lemanruss.htl.regmatch import NotApplicable, chain_equivalent, scorr_equivalent
 from lemanruss.htl.verify import check_equivalence
 
-EQUIV_TIMEOUT_S = 3600
+EQUIV_TIMEOUT_S = 600  # dsec fallback; scorr-cec (below) proves what dsec did, faster
+SCORR_TIMEOUT_S = 900
 
 
 def structural_problems(text: str) -> list[str]:
@@ -76,17 +77,25 @@ def odin_read_problem(odin3_bin: Path, text: str) -> str | None:
 def equivalence_check(text: str, ref_text: str, timeout: int = EQUIV_TIMEOUT_S,
                       trace: tuple[str, Mapping[str, str]] | None = None
                       ) -> tuple[str | None, str]:
-    """Check 4. Returns (problem or None, engine). Engines, in order: `regmatch-cec` (needs
-    `trace` = Odin's mapped text before `finalize` and the net renames: registers matched by
-    order, then by rename, and ABC cec proves each cut combinational netlist; sound, fast,
-    incomplete) then `dsec` (ABC sequential, `timeout` seconds). A pass needs a proof from one
-    of them; a timeout is reported as "unproven", a gate failure that is not a counterexample."""
+    """Check 4. Returns (problem or None, engine). Engines, in order:
+    `regmatch-cec`: needs `trace` (Odin's mapped text before `finalize`, the net renames);
+      registers matched by order, then by rename; ABC cec proves each cut combinational netlist.
+    `scorr-cec`: ABC signal correspondence on the sequential miter, 15 min cap; needs no
+      matching and handles registers ABC merged.
+    `dsec`: ABC sequential equivalence, `timeout` seconds.
+    A pass needs a proof from one of them. A timeout is reported as "unproven", a gate failure
+    that is not a counterexample."""
     if trace is not None:
         try:
             chain_equivalent(text, trace[0], trace[1], ref_text)
             return None, "regmatch-cec"
         except NotApplicable:
             pass
+    try:
+        scorr_equivalent(text, ref_text, SCORR_TIMEOUT_S)
+        return None, "scorr-cec"
+    except NotApplicable:
+        pass
     with tempfile.TemporaryDirectory() as td:
         a, b = Path(td) / "a.blif", Path(td) / "b.blif"
         a.write_text(text, encoding="utf-8")

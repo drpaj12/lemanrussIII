@@ -21,6 +21,7 @@ cut netlists equal. Two hints are available for the Seeker-Proc build chain:
 
 from __future__ import annotations
 
+import re
 import subprocess
 import tempfile
 from collections.abc import Mapping
@@ -104,6 +105,46 @@ def effective_init(init: str) -> str:
     return init if init in ("0", "1") else "0"
 
 
+def flat_text(f: Flat) -> str:
+    """The netlist as one BLIF with initial values read as equiv-check reads them (2/3 = 0)."""
+    lines = [".model m", ".inputs " + " ".join(f.inputs), ".outputs " + " ".join(f.outputs)]
+    for ins, out, rows in f.names:
+        lines.append(".names " + " ".join([*ins, out]))
+        lines += rows
+    for d, q, clk, init in f.latches:
+        lines.append(f".latch {d} {q} re {clk or 'clk'} {effective_init(init)}")
+    lines.append(".end")
+    return "\n".join(lines) + "\n"
+
+
+def abc_binary() -> Path:
+    return equiv_check_bin().parents[2] / "build" / "release" / "third_party" / "abc" / "abc"
+
+
+def scorr_equivalent(a_text: str, b_text: str, timeout: int = 900) -> None:
+    """Proves a == b by ABC's signal correspondence on their sequential miter (k-induction
+    register correspondence, initial values read as 0 for 2/3): the proof holds only if the miter
+    reduces to a latch-free circuit whose output is constant 0 (`sat` says UNSATISFIABLE).
+    Needs no latch matching. Raises NotApplicable when it does not reduce, or on a timeout."""
+    a, b = parse_flat(a_text), parse_flat(b_text)
+    if sorted(a.inputs) != sorted(b.inputs) or sorted(a.outputs) != sorted(b.outputs):
+        raise NotApplicable("port sets differ")
+    with tempfile.TemporaryDirectory() as td:
+        fa, fb = Path(td) / "a.blif", Path(td) / "b.blif"
+        fa.write_text(flat_text(a), encoding="utf-8")
+        fb.write_text(flat_text(b), encoding="utf-8")
+        try:
+            run = subprocess.run(
+                [str(abc_binary()), "-c", f"miter {fa} {fb}; scorr; print_stats; sat"],
+                capture_output=True, text=True, check=False, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            raise NotApplicable("scorr timed out") from exc
+    out = run.stdout + run.stderr
+    lat = re.findall(r"lat\s*=\s*(\d+)", out)
+    if run.returncode != 0 or "UNSATISFIABLE" not in out or not lat or int(lat[-1]) != 0:
+        raise NotApplicable("scorr did not reduce the miter to a constant")
+
+
 def pairs_by_order(a: Flat, b: Flat) -> list[tuple[int, int]]:
     """Latch k of a with latch k of b."""
     if len(a.latches) != len(b.latches):
@@ -169,4 +210,4 @@ def chain_equivalent(form_text: str, mapped_text: str, renames: Mapping[str, str
 
 
 __all__ = ["Flat", "NotApplicable", "parse_flat", "cut_text", "pairs_by_order",
-           "pairs_by_rename", "cut_equivalent", "chain_equivalent"]
+           "pairs_by_rename", "cut_equivalent", "chain_equivalent", "scorr_equivalent", "flat_text"]
