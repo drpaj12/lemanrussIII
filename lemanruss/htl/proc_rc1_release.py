@@ -25,8 +25,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from lemanruss.htl.proc_build import _witness_words
-from lemanruss.htl.proc_rareness import magic_match_probability
 from lemanruss.htl.proc_gate import GateError, gate_problems, structural_problems
+from lemanruss.htl.proc_rareness import magic_match_probability
 from lemanruss.htl.proc_release import LEAK_TOKENS, NAME_VOCAB, check_name_vocabulary
 from lemanruss.htl.proc_witness import alu_witness_words
 from lemanruss.htl.release import gz_bytes, read_blif_gz, scrub_group, sha256_file, write_sha256sums

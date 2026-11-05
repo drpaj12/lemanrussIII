@@ -28,6 +28,7 @@ from lemanruss.htl.dark_ram_blackbox import dark_odin_files
 from lemanruss.htl.mcu_ram_blackbox import mcu_odin_files
 from lemanruss.htl.obfuscate import obfuscate
 from lemanruss.htl.picorv32_pilot import PICO_WITNESS_CYCLES, pico_witness_words
+from lemanruss.htl.proc_gate import gate_problems, structural_problems
 from lemanruss.htl.proc_insert import (
     insert_dark_kinded_multitrojan,
     insert_mcu_kinded_multitrojan,
@@ -42,7 +43,6 @@ from lemanruss.htl.proc_pilot import (
     mcu_witness_words,
 )
 from lemanruss.htl.proc_rareness import magic_match_probability
-from lemanruss.htl.proc_gate import gate_problems, structural_problems
 from lemanruss.htl.proc_release import lower_gates_as_names
 from lemanruss.htl.proc_run import (
     DARK_UPSTREAM,
