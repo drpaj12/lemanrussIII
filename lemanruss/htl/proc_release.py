@@ -316,13 +316,16 @@ def attempt_restructure(
 def lower_gates_as_names(
     odin3_bin: Path, top: str, files: list[str], cwd: Path, out: Path, timeout: int = 300,
 ) -> None:
-    """`read_verilog <files>; proc; opt; lower; write_blif --gates-as-names <out>` -- the plain
+    """`read_verilog <files>; proc; opt; flatten; opt; lower; write_blif --gates-as-names <out>`
+    -- one flat `.model` (rc1 omitted `flatten`: darkriscv and mcu came out as several `.model`
+    sections that `obfuscate.parse` merged into one invalid netlist). The plain
     dialect every gate written `.names`, so ABC (and `bitsim`) can read it (the plain
     `write_blif` of round 7's build keeps library primitives as `.subckt`, which both refuse)."""
     file_list = " ".join(files)
     run = subprocess.run(
         [str(odin3_bin), "--top", top, "-p",
-         f"read_verilog {file_list}; proc; opt; lower; write_blif --gates-as-names {out}"],
+         f"read_verilog {file_list}; proc; opt; flatten; opt; lower; "
+         f"write_blif --gates-as-names {out}"],
         cwd=cwd, capture_output=True, text=True, timeout=timeout, check=False,
     )
     if run.returncode != 0 or not out.exists():

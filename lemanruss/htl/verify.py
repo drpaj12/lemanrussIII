@@ -142,7 +142,7 @@ class EquivResult:
 
 
 def check_equivalence(
-    equiv_check_bin: Path, clean_blif: Path, forced_off_blif: Path
+    equiv_check_bin: Path, clean_blif: Path, forced_off_blif: Path, timeout: int = 120
 ) -> EquivResult:
     """Runs the repo's `tools/equiv-check` (ABC cec) on the clean design against the infected
     design with its trigger forced inactive (spec section 4(c)): exit 0 equivalent, 1 not, 2
@@ -152,7 +152,7 @@ def check_equivalence(
         capture_output=True,
         text=True,
         check=False,
-        timeout=120,
+        timeout=timeout,
     )
     return EquivResult(
         equivalent=result.returncode == 0,

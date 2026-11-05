@@ -42,6 +42,7 @@ from lemanruss.htl.proc_pilot import (
     mcu_witness_words,
 )
 from lemanruss.htl.proc_rareness import magic_match_probability
+from lemanruss.htl.proc_gate import gate_problems, structural_problems
 from lemanruss.htl.proc_release import lower_gates_as_names
 from lemanruss.htl.proc_run import (
     DARK_UPSTREAM,
@@ -385,6 +386,18 @@ def build_one_circuit(
             inf_form_text[form] = text
         result.form_text = {f"{f}-clean": t for f, t in result.form_text.items()}
         result.form_text.update({f"{f}-infected": t for f, t in inf_form_text.items()})
+        # release gate (rc2): every form file is one valid flat model, Odin III reads it, and
+        # it is equivalent to the lowered netlist it was mapped from; a failure stops the build
+        problems: list[str] = []
+        for key, nl in (("clean", clean_nl), ("infected", inf_nl)):
+            problems += [f"{key}.nl: {x}" for x in structural_problems(nl.read_text())]
+        for key, ftext in result.form_text.items():
+            ref = clean_nl if key.endswith("-clean") else inf_nl
+            problems += [f"{key}: {x}" for x in gate_problems(
+                ftext, odin3_bin, ref.read_text())]
+        if problems:
+            result.error = "release gate: " + "; ".join(problems)[:400]
+            result.gate_pass = False
     except Exception as exc:  # noqa: BLE001 -- a build failure is data (failures.json), not a crash
         result.error = f"{type(exc).__name__}: {str(exc)[:200]}"
         result.gate_pass = False

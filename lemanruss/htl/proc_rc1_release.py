@@ -26,6 +26,7 @@ from pathlib import Path
 
 from lemanruss.htl.proc_build import _witness_words
 from lemanruss.htl.proc_rareness import magic_match_probability
+from lemanruss.htl.proc_gate import GateError, gate_problems, structural_problems
 from lemanruss.htl.proc_release import LEAK_TOKENS, NAME_VOCAB, check_name_vocabulary
 from lemanruss.htl.proc_witness import alu_witness_words
 from lemanruss.htl.release import gz_bytes, read_blif_gz, scrub_group, sha256_file, write_sha256sums
@@ -69,8 +70,10 @@ def draw_infected(n: int, rng: random.Random) -> set[int]:
 
 def package_proc_rc1(
     circuits: list[LogicalCircuit], out_dir: Path, seed: int, release_name: str = RELEASE_NAME,
-    notes: dict[str, object] | None = None,
+    notes: dict[str, object] | None = None, odin3_bin: Path | None = None,
 ) -> dict[str, object]:
+    """`odin3_bin` set: every file passes the release gate (`proc_gate`) before it is written,
+    or `GateError` stops the packaging."""
     out_dir.mkdir(parents=True, exist_ok=False)
     cdir, adir = out_dir / "circuits", out_dir / "answer_key"
     cdir.mkdir()
@@ -108,6 +111,7 @@ def package_proc_rc1(
             infected = i in infected_idx[form]
             clean_text = lc.text(bk, "clean")
             text = lc.text(bk, "infected") if infected else clean_text
+            text_before_scrub = text
             if infected:
                 new, mapping = scrub_group({cid: text}, clean_text, cid, seed)
                 text = new[cid]
@@ -124,6 +128,13 @@ def package_proc_rc1(
                 rareness[cid] = {"p_match_per_trojan": magic_match_probability(1),
                                  "n_trojans": len(lc.kinds), "kinds": lc.kinds,
                                  "scoap": "not measured in rc1"}
+            # release gate (rc2): the file as released is valid, and equivalent to its pre-scrub
+            # mapped netlist (the scrub only renames inserter nets)
+            problems = gate_problems(
+                text, odin3_bin, text_before_scrub if text != text_before_scrub else None
+            ) if odin3_bin else []
+            if problems:
+                raise GateError(f"{cid}: " + "; ".join(problems))
             data = gz_bytes(text)
             (cdir / f"{cid}.blif.gz").write_bytes(data)
             manifest_rows.append({"id": cid, "base": lc.base, "file": f"circuits/{cid}.blif.gz",
@@ -278,6 +289,7 @@ def verify_proc_rc1(out_dir: Path) -> dict[str, object]:
         except (OSError, EOFError) as exc:
             errors.append(f"{cid}: unreadable ({type(exc).__name__})")
             continue
+        errors += [f"{cid}: {x}" for x in structural_problems(text)]  # release gate (rc2)
         if r["sha256"] in hashes:
             dups += 1
         hashes[str(r["sha256"])] = cid
