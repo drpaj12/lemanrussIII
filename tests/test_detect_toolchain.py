@@ -55,3 +55,34 @@ class ValThresholdTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProcTwinReferenceTest(unittest.TestCase):
+    """Seeker-Proc names the twin of an infected circuit `<id>-twin`, which is not a released
+    file; Method B then got the infected circuit as its own reference (drift 0 for all)."""
+
+    def test_reference_is_the_answer_key_twin(self) -> None:
+        import gzip
+        import json
+
+        from lemanruss.detect.data import Release
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for d in ("circuits", "answer_key/twins"):
+                (root / d).mkdir(parents=True)
+            for cid in ("pr0001", "pr0002"):
+                (root / "circuits" / f"{cid}.blif.gz").write_bytes(gzip.compress(b".model m\n"))
+            (root / "answer_key/twins/pr0002.blif.gz").write_bytes(gzip.compress(b".model t\n"))
+            (root / "manifest.json").write_text(json.dumps({"circuits": [
+                {"id": "pr0001", "file": "circuits/pr0001.blif.gz"},
+                {"id": "pr0002", "file": "circuits/pr0002.blif.gz"}]}))
+            prov = {
+                "pr0001": {"base": "b", "source": "pr0001", "restructuring": "gates",
+                           "role": "clean", "clean_twin": "pr0001", "insert": {}},
+                "pr0002": {"base": "b", "source": "pr0002", "restructuring": "gates",
+                           "role": "infected", "clean_twin": "pr0002-twin",
+                           "insert": {"n_trojans": 1}}}
+            (root / "answer_key/provenance.json").write_text(json.dumps(prov))
+            recs = {r.id: r for r in Release(root, "Proc").records}
+            self.assertEqual(recs["pr0001"].reference, recs["pr0001"].path)
+            self.assertEqual(recs["pr0002"].reference, root / "answer_key/twins/pr0002.blif.gz")
