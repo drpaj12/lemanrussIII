@@ -26,7 +26,7 @@ from lemanruss.htl.bitsim import latches_of
 from lemanruss.htl.blif_text import parse_single_model
 from lemanruss.htl.dark_ram_blackbox import dark_odin_files
 from lemanruss.htl.mcu_ram_blackbox import mcu_odin_files
-from lemanruss.htl.obfuscate import obfuscate
+from lemanruss.htl.obfuscate import obfuscate_traced
 from lemanruss.htl.picorv32_pilot import PICO_WITNESS_CYCLES, pico_witness_words
 from lemanruss.htl.proc_gate import gate_problems, structural_problems
 from lemanruss.htl.proc_insert import (
@@ -126,6 +126,7 @@ class BuiltCircuit:
     form_text: dict[str, str] = field(default_factory=dict)  # form -> BLIF text
     form_script: dict[str, str] = field(default_factory=dict)  # form -> ABC script used
     form_errors: dict[str, str] = field(default_factory=dict)
+    gate_engines: dict[str, str] = field(default_factory=dict)  # form key -> equivalence engine
     gate_pass: bool = False
     error: str = ""
 
@@ -368,22 +369,25 @@ def build_one_circuit(
             result.error = "one or more functional gates failed (see fields)"
             return result
 
+        hints: dict[str, tuple[str, dict[str, str]]] = {}  # form key -> (mapped text, renames)
         for form in FORMS:
-            out = obfuscate(clean_nl, form, rng, work, f"{circuit_id}-clean-{form}")
+            out = obfuscate_traced(clean_nl, form, rng, work, f"{circuit_id}-clean-{form}")
             if isinstance(out, str):
                 result.form_errors[form] = out
                 continue
-            text, script = out
+            text, script, mapped, renames = out
             result.form_text[form] = text
             result.form_script[form] = script
+            hints[f"{form}-clean"] = (mapped, renames)
         inf_form_text: dict[str, str] = {}
         for form in FORMS:
-            out = obfuscate(inf_nl, form, rng, work, f"{circuit_id}-inf-{form}")
+            out = obfuscate_traced(inf_nl, form, rng, work, f"{circuit_id}-inf-{form}")
             if isinstance(out, str):
                 result.form_errors[f"infected-{form}"] = out
                 continue
-            text, _script = out
+            text, _script, mapped, renames = out
             inf_form_text[form] = text
+            hints[f"{form}-infected"] = (mapped, renames)
         result.form_text = {f"{f}-clean": t for f, t in result.form_text.items()}
         result.form_text.update({f"{f}-infected": t for f, t in inf_form_text.items()})
         # release gate (rc2): every form file is one valid flat model, Odin III reads it, and
@@ -394,7 +398,9 @@ def build_one_circuit(
         for key, ftext in result.form_text.items():
             ref = clean_nl if key.endswith("-clean") else inf_nl
             problems += [f"{key}: {x}" for x in gate_problems(
-                ftext, odin3_bin, ref.read_text())]
+                ftext, odin3_bin, ref.read_text(), result.gate_engines, key,
+                hints.get(key))]
+        problems += [f"form not produced: {k}: {v}" for k, v in result.form_errors.items()]
         if problems:
             result.error = "release gate: " + "; ".join(problems)[:400]
             result.gate_pass = False

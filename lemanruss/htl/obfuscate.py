@@ -239,13 +239,24 @@ def map_with_odin(src: Path, kind: str, script: str, work: Path, tag: str) -> st
     return out.read_text(encoding="utf-8")
 
 
+def obfuscate_traced(
+    src: Path, kind: str, rng: random.Random, work: Path, tag: str
+) -> tuple[str, str, str, dict[str, str]] | str:
+    """`obfuscate` plus the hints a register-matched equivalence check needs: (finished text,
+    ABC script, Odin III's mapped text before `finalize`, net renames old -> new), or the
+    reason it failed. The random draws are exactly those of `obfuscate`."""
+    script = random_script(rng, kind)
+    try:
+        mapped = map_with_odin(src, kind, script, work, tag)
+    except Exception as exc:
+        return f"obfuscate {kind}: {type(exc).__name__}: {str(exc)[:100]}"
+    renames: dict[str, str] = {}
+    return finalize(mapped, rng, renames), script, mapped, renames
+
+
 def obfuscate(
     src: Path, kind: str, rng: random.Random, work: Path, tag: str
 ) -> tuple[str, str] | str:
     """(finished text, ABC script) of `src`, or the reason it failed."""
-    script = random_script(rng, kind)
-    try:
-        text = map_with_odin(src, kind, script, work, tag)
-    except Exception as exc:
-        return f"obfuscate {kind}: {type(exc).__name__}: {str(exc)[:100]}"
-    return finalize(text, rng), script
+    out = obfuscate_traced(src, kind, rng, work, tag)
+    return out if isinstance(out, str) else (out[0], out[1])

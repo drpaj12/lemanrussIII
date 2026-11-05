@@ -15,12 +15,14 @@ from __future__ import annotations
 import subprocess
 import tempfile
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 
 from lemanruss.htl.r4check import equiv_check_bin
+from lemanruss.htl.regmatch import NotApplicable, chain_equivalent
 from lemanruss.htl.verify import check_equivalence
 
-EQUIV_TIMEOUT_S = 900
+EQUIV_TIMEOUT_S = 3600
 
 
 def structural_problems(text: str) -> list[str]:
@@ -71,25 +73,51 @@ def odin_read_problem(odin3_bin: Path, text: str) -> str | None:
     return None
 
 
-def equivalence_problem(text: str, ref_text: str, timeout: int = EQUIV_TIMEOUT_S) -> str | None:
-    """Check 4: ABC equivalence of `text` to `ref_text`; only exit 0 passes."""
+def equivalence_check(text: str, ref_text: str, timeout: int = EQUIV_TIMEOUT_S,
+                      trace: tuple[str, Mapping[str, str]] | None = None
+                      ) -> tuple[str | None, str]:
+    """Check 4. Returns (problem or None, engine). Engines, in order: `regmatch-cec` (needs
+    `trace` = Odin's mapped text before `finalize` and the net renames: registers matched by
+    order, then by rename, and ABC cec proves each cut combinational netlist; sound, fast,
+    incomplete) then `dsec` (ABC sequential, `timeout` seconds). A pass needs a proof from one
+    of them; a timeout is reported as "unproven", a gate failure that is not a counterexample."""
+    if trace is not None:
+        try:
+            chain_equivalent(text, trace[0], trace[1], ref_text)
+            return None, "regmatch-cec"
+        except NotApplicable:
+            pass
     with tempfile.TemporaryDirectory() as td:
         a, b = Path(td) / "a.blif", Path(td) / "b.blif"
         a.write_text(text, encoding="utf-8")
         b.write_text(ref_text, encoding="utf-8")
         try:
-            res = check_equivalence(equiv_check_bin(), a, b, timeout=timeout)
+            res = check_equivalence(
+                equiv_check_bin(), a, b, timeout=timeout + 60,
+                extra_args=("--timeout", str(timeout)))  # ABC's own limit is 600 s by default
         except subprocess.TimeoutExpired:
-            return f"equivalence check timed out after {timeout} s"
+            return (f"equivalence UNPROVEN: register matching failed and dsec exceeded "
+                    f"{timeout} s (no counterexample found)"), "dsec"
     if res.returncode == 0:
-        return None
+        return None, "dsec"
     last = (res.stdout + res.stderr).strip().splitlines()
-    return f"not equivalent to the reference (equiv-check exit {res.returncode}): " + (
-        last[-1] if last else "")
+    tail = last[-1] if last else ""
+    if res.returncode == 1:
+        return f"NOT equivalent to the reference (counterexample): {tail}", "dsec"
+    if res.returncode in (4, 5):
+        return f"equivalence UNPROVEN (exit {res.returncode}): {tail}", "dsec"
+    return f"equivalence check error (equiv-check exit {res.returncode}): {tail}", "dsec"
 
 
-def gate_problems(text: str, odin3_bin: Path, ref_text: str | None = None) -> list[str]:
-    """All four checks; structural problems short-circuit the slower ones."""
+def equivalence_problem(text: str, ref_text: str, timeout: int = EQUIV_TIMEOUT_S) -> str | None:
+    return equivalence_check(text, ref_text, timeout)[0]
+
+
+def gate_problems(text: str, odin3_bin: Path, ref_text: str | None = None,
+                  engines: dict[str, str] | None = None, key: str = "",
+                  trace: tuple[str, Mapping[str, str]] | None = None) -> list[str]:
+    """All four checks; structural problems short-circuit the slower ones. `engines[key]` gets
+    the equivalence engine that decided (`regmatch-cec` or `dsec`)."""
     problems = structural_problems(text)
     if problems:
         return problems
@@ -97,7 +125,9 @@ def gate_problems(text: str, odin3_bin: Path, ref_text: str | None = None) -> li
     if rd:
         return [rd]
     if ref_text is not None:
-        eq = equivalence_problem(text, ref_text)
+        eq, engine = equivalence_check(text, ref_text, trace=trace)
+        if engines is not None:
+            engines[key] = engine
         if eq:
             return [eq]
     return []
