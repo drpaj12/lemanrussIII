@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 import unittest
 
 from lemanruss.htl.rv32i import (
@@ -10,7 +11,10 @@ from lemanruss.htl.rv32i import (
     encode_lui,
     encode_nop,
     encode_self_loop,
+    encode_srai,
+    encode_srli,
     encode_sw,
+    random_magic_word,
 )
 
 
@@ -81,6 +85,54 @@ class TestLui(unittest.TestCase):
             encode_lui(6, 1 << 20)
         with self.assertRaises(AssertionError):
             encode_lui(6, -1)
+
+
+class TestSrShift(unittest.TestCase):
+    def test_srli_known_encoding(self) -> None:
+        # srli x5, x6, 3: opcode 0b0010011, funct3 0b101, imm[11:5]=0 (not SRAI), shamt=3
+        word = encode_srli(5, 6, 3)
+        self.assertEqual(word & 0x7F, 0b0010011)
+        self.assertEqual((word >> 12) & 0x7, 0b101)
+        self.assertEqual((word >> 7) & 0x1F, 5)
+        self.assertEqual((word >> 15) & 0x1F, 6)
+        self.assertEqual((word >> 25) & 0x7F, 0)
+        self.assertEqual((word >> 20) & 0x1F, 3)
+
+    def test_srai_known_encoding(self) -> None:
+        # srai x5, x6, 3: same as srli but imm[11:5] = 0b0100000
+        word = encode_srai(5, 6, 3)
+        self.assertEqual((word >> 25) & 0x7F, 0b0100000)
+        self.assertEqual((word >> 20) & 0x1F, 3)
+        self.assertNotEqual(word, encode_srli(5, 6, 3))
+
+    def test_shamt_range(self) -> None:
+        with self.assertRaises(AssertionError):
+            encode_srli(5, 6, 32)
+        with self.assertRaises(AssertionError):
+            encode_srai(5, 6, -1)
+
+
+class TestRandomMagicWord(unittest.TestCase):
+    def test_reproducible_from_seed(self) -> None:
+        a = random_magic_word(random.Random(42), set())
+        b = random_magic_word(random.Random(42), set())
+        self.assertEqual(a, b)
+
+    def test_never_the_nop(self) -> None:
+        for seed in range(50):
+            self.assertNotEqual(random_magic_word(random.Random(seed), set()), encode_nop())
+
+    def test_excludes_given_words(self) -> None:
+        rng = random.Random(7)
+        first = random_magic_word(rng, set())
+        second = random_magic_word(random.Random(7), {first})
+        self.assertNotEqual(first, second)
+
+    def test_decodes_as_addi_opcode(self) -> None:
+        word = random_magic_word(random.Random(3), set())
+        self.assertEqual(word & 0x7F, 0b0010011)
+        self.assertEqual((word >> 12) & 0x7, 0b000)
+        self.assertNotEqual((word >> 7) & 0x1F, 0)  # rd != x0, so the result is observable
 
 
 class TestSw(unittest.TestCase):

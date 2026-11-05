@@ -272,7 +272,11 @@ def main(argv: list[str] | None = None) -> int:
 
         from lemanruss.htl.relverify import verify_release
 
-        if (args.release / "answer_key" / "sets.json").exists():
+        if args.release.name.startswith("seeker-proc-"):
+            from lemanruss.htl.proc_rc1_release import verify_proc_rc1
+
+            rep = verify_proc_rc1(args.release)
+        elif (args.release / "answer_key" / "sets.json").exists():
             from lemanruss.htl.n200verify import verify_n200
 
             rep = verify_n200(args.release, args.scratch, args.workers)

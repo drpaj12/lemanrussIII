@@ -201,6 +201,10 @@ class GnnDetector(Detector):
         y_val = [y for g, y in va_all if g is not None]
         gtr = [Data(x=g.x, edge_index=g.edge_index, y=torch.tensor([y]))
                for g, y in zip(gtr, y_train, strict=True)]
+        if not gtr:
+            raise ValueError(
+                f"{self.name}: no training graph could be built ({len(pairs)} circuits; Odin III "
+                "SCOAP unavailable, timed out or refused on all of them)")
         in_dim = gtr[0].x.shape[1]
         model = self._build(in_dim)
         n_pos = max(sum(y_train), 1)

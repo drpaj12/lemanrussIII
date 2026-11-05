@@ -82,6 +82,10 @@ class Release:
             for base, per_base in json.loads(sets_file.read_text(encoding="utf-8")).items():
                 if isinstance(per_base.get("golden"), str):
                     goldens[base] = per_base["golden"]
+        # Seeker-Proc ships the clean twin of an infected circuit only in the answer key (the
+        # released set holds one circuit per slot): the reference of Method B for those.
+        twin_dir = root / "answer_key" / "twins"
+        twins = {f.name.split(".")[0]: f for f in sorted(twin_dir.glob("*.blif*"))}
         self.records: list[Record] = []
         for cid, meta in prov.items():
             if cid not in files:
@@ -99,7 +103,7 @@ class Release:
                     set=str(meta.get("set") or sets.get(cid, sets.get(meta["source"], ""))),
                     variant=_variant(insert) if infected else "",
                     path=files[cid],
-                    reference=files.get(twin, files[cid]),
+                    reference=files.get(twin) or twins.get(cid) or files[cid],
                 )
             )
         self.records.sort(key=lambda r: r.id)

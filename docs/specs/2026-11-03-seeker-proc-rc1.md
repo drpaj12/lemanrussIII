@@ -22,6 +22,55 @@ scores clean vs infected twin within 0.0023).
   form (labels per memory cad-reporting-convention: headline W/L/T + win count first, then the
   strict ABOVE CHANCE / INCONCLUSIVE / BELOW CHANCE label).
 
+## 0a. H-P1 amendment, 2026-11-04 (applied before the full build)
+
+Peter, 2026-11-04, verbatim: "1a with a secret program that activates trojans (right?)";
+"2 that's fine, but why not a trojan that messes up the lsb of an ALU operation (maybe shift right)
+or rotate"; "4) sure"; cores: mcu + darkriscv (picorv32 later).
+
+H-P1 is amended as follows (the original wording above is kept as history):
+
+- Silence (infected equals clean twin) is judged by the Odin III RTL sim and the Odin III netlist
+  sim on **every** program (shipped programs and the synthetic neutral witness), plus iverilog on
+  the **shipped** programs.
+- The darkriscv iverilog `x` on the synthetic neutral witness (`DEBUG[3]`/`DEBUG[2]` from cycle
+  366, `docs/results-round10.md` sections 4.0 and 4.1) is recorded as a known four-state
+  simulator difference. It does not appear on the shipped program, and Odin III's two-state
+  engines show 0 differing lines. It is not a gate failure.
+- Witness programs stay as they are: each infected circuit's witness is its **secret activation
+  program** (it carries that circuit's own magic word or words). It ships only in the separate
+  answer key, never next to the circuit.
+- Payload kinds per core: (i) reset DoS, (ii) stall DoS, (iii) ALU data corruption (flip the LSB of
+  the shift-right result while triggered). Rotate only if the core implements a rotate
+  instruction (RV32I has none; checked per core in the build notes). Each kind has its own
+  witness that shows its effect. 1 to 3 Trojans per infected circuit, kind drawn per Trojan.
+  Magic words are per-circuit random legal RV32I words, seeded and logged.
+
+## 0b. Magic words and witnesses per payload kind, 2026-11-04 (Continuation 4, silence-gate fix)
+
+Two defects in the batch build (docs/results-round11.md section 7) change the generator rules:
+
+- **`alu` magic words are shift-right instructions on mcu and darkriscv.** The trigger watches the
+  instruction register of the instruction being executed (mcu `instruction`, darkriscv `XIDATA`),
+  and the payload corrupts the result of that same instruction, so the magic word of an `alu`
+  Trojan is a random SRLI/SRAI/SRL/SRA word (17 free bits: form, rd 1..31, rs1, shamt or rs2),
+  not an ADDI. Its witness (`proc_witness.alu_witness_words`) loads all-ones into rs1 (and 1 into
+  rs2), runs the word, and stores rd to the base's observable address (darkriscv OPORT, mcu PORTB).
+  On **picorv32** the watched register (`next_insn_opcode`) holds the prefetched *next* word while
+  a multi-cycle shift completes (`mem_do_prefetch`, picorv32.v), so its `alu` magic word is an ADDI
+  word and its witness is `srli rX,x5,8` followed by the magic word. reset and stall keep the ADDI
+  magic word and the earlier witnesses.
+- **Gates.** "Fires" now means the witness changes the trace on all three engines (iverilog, Odin
+  III RTL, Odin III netlist), not iverilog alone. Each `alu` Trojan also gets a *neutral-shift*
+  silence gate: the same witness shape with a different shift (bit 20 flipped, never a magic word)
+  must leave the Odin III RTL and netlist traces equal to clean.
+- **Rejection rule.** A drawn magic word is rejected when it equals a word of any shipped program
+  image of its base (mcu: every `quartus_project_revert_timer/*.vmh` plane set; darkriscv:
+  `src/darksocv.mem`; picorv32: none in the checkout) or any scaffolding word of the witness and
+  neutral programs (`proc_witness.forbidden_words`). Otherwise a neutral program would drive the
+  watched bus to the magic value and silence would fail legitimately. Rejection is by construction
+  of the draw; failed draws are never redrawn past (`max_redraws=0` in the N=10 acceptance run).
+
 ## 1. Controller defaults (agent defaults, Peter can override; logged per CLAUDE.md)
 
 1. N = 100 circuits per form: gates (lowered gate netlist, `--gates-as-names` as pilot3), lut4

@@ -34,6 +34,7 @@ from lemanruss.htl.proc_insert import (
     insert_dark_trojan,
     insert_mcu_multitrojan,
     insert_mcu_trojan,
+    insert_picorv32_kinded_multitrojan,
 )
 from lemanruss.htl.verify import EquivResult, check_equivalence
 
@@ -362,3 +363,97 @@ def equivalence_forced_off(clean_blif: Path, forced_off_blif: Path) -> EquivResu
     base = Path(root) if root else Path(os.environ["ODIN3_LIB"]).resolve().parents[2]
     equiv_bin = base / "tools" / "equiv-check" / "equiv-check"
     return check_equivalence(equiv_bin, clean_blif, forced_off_blif)
+
+
+# --- picorv32 (rc1 Continuation 3, controller addition 2026-11-04). picorv32.v has no RAM of its
+# own (its memory bus is external by design, unlike mcu/darkriscv); `lemanruss.htl.picorv32_tb`
+# writes this round's own hand-written port-only testbench (`pico_tb.v`, not copied from
+# upstream's own `testbench_ez.v`, per CLAUDE.md) with the RAM behavioural model inside it, so
+# there is no per-base RAM black-box step here (there is nothing for Odin III's `lower` to expand
+# into per-bit latches -- the testbench's `memory` array is never read by the DUT elaboration
+# Odin III runs on `picorv32.v` itself, only by the testbench Odin III's `sim_tb` reads
+# separately, same as mcu_tb.v's/dark_tb.v's own arrays).
+PICO_UPSTREAM = WS / "external" / "picorv32"
+
+
+def prepare_picorv32(up: Path, out: Path, cycles: int = 300) -> list[str]:
+    """Copies `picorv32.v` (read-only upstream; CLAUDE.md: never committed) into `out` and
+    `out/iv`, writes this repo's own `pico_tb.v` (both copies). Returns the one-file design list
+    (`picorv32.v`), the same shape `prepare_mcu`/`prepare_dark` return."""
+    from lemanruss.htl.picorv32_tb import write_pico_tb
+
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "iv").mkdir(parents=True, exist_ok=True)
+    src = (up / "picorv32.v").read_text()
+    (out / "picorv32.v").write_text(src)
+    (out / "iv" / "picorv32.v").write_text(src)
+    write_pico_tb(out, cycles)
+    write_pico_tb(out / "iv", cycles)
+    return ["picorv32.v"]
+
+
+def patch_picorv32_kinded_multicore(
+    out: Path, magic_words: list[int], kinds: list[str], *, force_inactive: bool = False
+) -> list[str]:
+    """rc1 Continuation 3: 1-3 independent Trojans on picorv32, each its own payload kind
+    (`insert_picorv32_kinded_multitrojan`). Returns the per-Trojan trigger wire names."""
+    names: list[str] = []
+    for rel in ("picorv32.v", "iv/picorv32.v"):
+        p = out / rel
+        patched, names = insert_picorv32_kinded_multitrojan(
+            p.read_text(), magic_words, kinds, force_inactive=force_inactive)
+        p.write_text(patched)
+    return names
+
+
+def write_pico_program(out: Path, words: list[int]) -> None:
+    """Overwrites `pico_prog.mem` (both the main build dir and its `iv/` copy)."""
+    from lemanruss.htl.picorv32_tb import write_pico_prog
+
+    write_pico_prog(words, out / "pico_prog.mem")
+    write_pico_prog(words, out / "iv" / "pico_prog.mem")
+
+
+def run_picorv32_once(
+    out: Path, files: list[str], odin3_bin: Path, cycles: int, tag: str
+) -> dict[str, str]:
+    """iverilog + Odin III RTL + Odin III netlist sim of picorv32 via `pico_tb.v`; three trace
+    files `<tag>.ref.txt`, `<tag>.rtl.txt`, `<tag>.nl.txt` under `out`."""
+    _set_cycles(out / "pico_tb.v", cycles)
+    _set_cycles(out / "iv" / "pico_tb.v", cycles)
+    file_list = " ".join(files)
+    iv = _run(
+        ["iverilog", "-g2005", "-o", f"../{tag}.vvp", "pico_tb.v", *files], cwd=out / "iv"
+    )
+    if iv.returncode != 0:
+        raise RuntimeError(f"iverilog failed: {iv.stderr}")
+    run = _run(["vvp", f"{tag}.vvp"], cwd=out)
+    (out / f"{tag}.ref.txt").write_text("\n".join(_data_lines(run.stdout)))
+
+    rtl = _run(
+        [str(odin3_bin), "--top", "picorv32", "-p",
+         f'read_verilog {file_list}; proc; opt; lower; sim_tb --out {tag}.rtl.txt pico_tb.v'],
+        cwd=out,
+    )
+    if rtl.returncode != 0:
+        raise RuntimeError(f"odin3 rtl sim_tb failed: {rtl.stdout}\n{rtl.stderr}")
+
+    nl = _run(
+        [str(odin3_bin), "--top", "picorv32", "-p",
+         f'read_verilog {file_list}; proc; opt; lower; write_blif {tag}.nl.blif'],
+        cwd=out,
+    )
+    if nl.returncode != 0:
+        raise RuntimeError(f"odin3 write_blif failed: {nl.stdout}\n{nl.stderr}")
+    nl2 = _run(
+        [str(odin3_bin), "--top", "picorv32", "-p",
+         f'read_blif {tag}.nl.blif; sim_tb --out {tag}.nl.txt pico_tb.v'],
+        cwd=out,
+    )
+    if nl2.returncode != 0:
+        raise RuntimeError(f"odin3 netlist sim_tb failed: {nl2.stdout}\n{nl2.stderr}")
+    return {
+        "ref": (out / f"{tag}.ref.txt").read_text(),
+        "rtl": (out / f"{tag}.rtl.txt").read_text(),
+        "nl": (out / f"{tag}.nl.txt").read_text(),
+    }
