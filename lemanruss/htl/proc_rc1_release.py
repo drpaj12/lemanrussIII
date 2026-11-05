@@ -185,7 +185,8 @@ def datasheet(
     assert isinstance(counts, dict)
     lines = [
         f"# {name} datasheet", "",
-        "Family: Seeker-Proc. Version 2.0-rc1 (round 11, 2026-11-04). Produced by Leman Russ III "
+        f"Family: Seeker-Proc. Version {name.removeprefix('seeker-proc-v')}. "
+        "Produced by Leman Russ III "
         "(Yggdrasil III). Defensive hardware-Trojan detection research; the circuits are Trojans "
         "to detect, nothing here is meant to be deployed.", "",
         "## What it is", "",
@@ -230,6 +231,10 @@ def datasheet(
         "infected separately. Odin III's in-process ABC path is used; ABC `read_blif` on the "
         "source netlists fails on these cores. Dummy cuts were not applied.", "",
         "## Gates every circuit passed", "",
+        "Release gate (rc2): every file is one flat `.model`, declares no port twice, drives no "
+        "net twice, is read by Odin III `read_blif`, and is equivalent (ABC) to the lowered "
+        "netlist it was mapped from. rc1 lacked this and its darkriscv and mcu files were "
+        "malformed (several `.model` sections merged); rc1 is superseded.", "",
         "Flip-flop equality with the clean twin; every Trojan's activation program changes the "
         "trace on iverilog, Odin III RTL and Odin III netlist simulation; Odin III RTL and "
         "netlist traces equal the clean twin's on the neutral program, on a non-magic "
