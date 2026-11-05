@@ -63,8 +63,9 @@ class RegMatchTest(unittest.TestCase):
 
     def test_inverted_phase_latch_is_proved(self) -> None:
         # same machine, but latch s0 is stored complemented (init 1, inverter in fanin and fanout)
-        flipped = SOURCE.replace(".latch n1 s0 re clk 3", ".names n1 m1\n0 1\n.latch m1 s0b re clk 1\n"
-                                 ".names s0b s0\n0 1")
+        flipped = SOURCE.replace(
+            ".latch n1 s0 re clk 3",
+            ".names n1 m1\n0 1\n.latch m1 s0b re clk 1\n.names s0b s0\n0 1")
         src = SOURCE.replace(".latch n1 s0 re clk 3", ".latch n1 s0 re clk 0")
         # order hint: latch k of the source with latch k of the mapped text
         from lemanruss.htl.regmatch import cut_equivalent
