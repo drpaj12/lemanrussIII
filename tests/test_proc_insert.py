@@ -12,10 +12,13 @@ from pathlib import Path
 
 from lemanruss.htl.proc_insert import (
     PatchNotFound,
+    insert_dark_kinded_multitrojan,
     insert_dark_multitrojan,
     insert_dark_trojan,
+    insert_mcu_kinded_multitrojan,
     insert_mcu_multitrojan,
     insert_mcu_trojan,
+    insert_picorv32_kinded_multitrojan,
 )
 from tests.helpers import odin_available
 
@@ -23,6 +26,7 @@ WS = Path(os.environ.get("ODIN3_WS", "~/odin3-ws")).expanduser()  # holds odin3/
 MCU_CORE = WS / "external/Arduino-on-RISC-V/quartus_project_revert_timer/single_cycle_core.v"
 DARK_RTL_DIR = WS / "external/darkriscv/rtl"
 DARK_CORE = DARK_RTL_DIR / "darkriscv.v"
+PICO_CORE = WS / "external" / "picorv32" / "picorv32.v"
 
 MAGIC_WORD = 0x2a500293  # addi x5, x0, 0x2a5 (lemanruss.htl.rv32i.encode_addi(5, 0, 0x2a5))
 MAGIC_SEQ = [0x00500293, 0x00600313, 0x00700393]  # addi x5,x0,5; addi x6,x0,6; addi x7,x0,7
@@ -175,6 +179,122 @@ class TestDarkPatch(unittest.TestCase):
             self.source, [MAGIC_WORD, 0x00500293], force_inactive=True)
         for n in names:
             self.assertIn(f"wire {n} = 1'b0;", patched)
+
+
+# rc1 Continuation 3 (2026-11-04): per-Trojan payload kind (reset/stall/alu), on all three bases.
+KINDS = ["reset", "stall", "alu"]
+KIND_WORDS = [MAGIC_WORD, 0x00100293, 0x00200313]
+
+
+@unittest.skipUnless(MCU_CORE.is_file(), "needs the external/Arduino-on-RISC-V checkout")
+class TestMcuKindedPatch(unittest.TestCase):
+    def setUp(self) -> None:
+        self.source = MCU_CORE.read_text()
+
+    def test_three_kinds_wire_up(self) -> None:
+        patched, names = insert_mcu_kinded_multitrojan(self.source, KIND_WORDS, KINDS)
+        self.assertEqual(names, ["__htl_trigger_0", "__htl_trigger_1", "__htl_trigger_2"])
+        self.assertIn("wire __htl_trigger_reset = __htl_trigger_0;", patched)
+        self.assertIn("wire __htl_trigger_stall = __htl_trigger_1;", patched)
+        self.assertIn("wire __htl_trigger_alu = __htl_trigger_2;", patched)
+        self.assertIn("__htl_pc_mux", patched)
+        self.assertIn("__htl_alu_raw", patched)
+        self.assertIn("ALU_operation==6'd12 || ALU_operation==6'd13", patched)
+        self.assertEqual(patched.count("endmodule"), self.source.count("endmodule"))
+
+    def test_only_alu_kind_present_others_zero(self) -> None:
+        patched, _ = insert_mcu_kinded_multitrojan(self.source, [MAGIC_WORD], ["alu"])
+        self.assertIn("wire __htl_trigger_reset = 1'b0;", patched)
+        self.assertIn("wire __htl_trigger_stall = 1'b0;", patched)
+
+    def test_rejects_bad_kind(self) -> None:
+        with self.assertRaises(ValueError):
+            insert_mcu_kinded_multitrojan(self.source, [MAGIC_WORD], ["rotate"])
+
+    def test_force_inactive(self) -> None:
+        patched, names = insert_mcu_kinded_multitrojan(
+            self.source, KIND_WORDS, KINDS, force_inactive=True)
+        for n in names:
+            self.assertIn(f"wire {n} = 1'b0;", patched)
+
+    @unittest.skipUnless(odin_available(), "needs ODIN3_LIB/PYTHONPATH")
+    def test_patched_core_still_parses(self) -> None:
+        from lemanruss.htl.odin_check import verilog_parses
+
+        patched, _ = insert_mcu_kinded_multitrojan(self.source, KIND_WORDS, KINDS)
+        verilog_parses(patched)
+
+
+@unittest.skipUnless(DARK_CORE.is_file(), "needs the external/darkriscv checkout")
+class TestDarkKindedPatch(unittest.TestCase):
+    def setUp(self) -> None:
+        self.source = DARK_CORE.read_text()
+
+    def test_three_kinds_wire_up(self) -> None:
+        patched, names = insert_dark_kinded_multitrojan(self.source, KIND_WORDS, KINDS)
+        self.assertEqual(names, ["__htl_trigger_0", "__htl_trigger_1", "__htl_trigger_2"])
+        self.assertIn("XRES <= RES || __htl_trigger_reset;", patched)
+        self.assertIn("__htl_trigger_stall ||", patched)
+        self.assertIn("__htl_rmdata", patched)
+        self.assertIn("FCT3==3'd5", patched)
+        self.assertEqual(patched.count("endmodule"), 1)
+
+    def test_rejects_bad_kind(self) -> None:
+        with self.assertRaises(ValueError):
+            insert_dark_kinded_multitrojan(self.source, [MAGIC_WORD], ["rotate"])
+
+    def test_force_inactive(self) -> None:
+        patched, names = insert_dark_kinded_multitrojan(
+            self.source, KIND_WORDS, KINDS, force_inactive=True)
+        for n in names:
+            self.assertIn(f"wire {n} = 1'b0;", patched)
+
+    @unittest.skipUnless(odin_available(), "needs ODIN3_LIB/PYTHONPATH")
+    def test_patched_core_still_parses(self) -> None:
+        from odin3 import Design
+
+        patched, _ = insert_dark_kinded_multitrojan(self.source, KIND_WORDS, KINDS)
+        with tempfile.TemporaryDirectory() as tmp:
+            rtl = Path(tmp) / "rtl"
+            rtl.mkdir()
+            shutil.copy(DARK_RTL_DIR / "config.vh", rtl / "config.vh")
+            (rtl / "patched.v").write_text(patched)
+            with Design() as design:
+                design.run_pass("read_verilog", f'--parse-only "{rtl / "patched.v"}"')
+
+
+@unittest.skipUnless(PICO_CORE.is_file(), "needs the external/picorv32 checkout (CLAUDE.md: "
+                     "never committed; not present e.g. in CI)")
+class TestPicorv32KindedPatch(unittest.TestCase):
+    def setUp(self) -> None:
+        self.source = PICO_CORE.read_text()
+
+    def test_three_kinds_wire_up(self) -> None:
+        patched, names = insert_picorv32_kinded_multitrojan(self.source, KIND_WORDS, KINDS)
+        self.assertEqual(names, ["__htl_trigger_0", "__htl_trigger_1", "__htl_trigger_2"])
+        self.assertIn("if (!resetn || __htl_trigger_reset) begin", patched)
+        self.assertIn(
+            "decoder_trigger <= !__htl_trigger_stall && mem_do_rinst && mem_done;", patched)
+        self.assertIn("instr_srli || instr_srl", patched)
+        self.assertIn("next_insn_opcode == 32'h", patched)
+        self.assertEqual(patched.count("endmodule"), self.source.count("endmodule"))
+
+    def test_rejects_bad_kind(self) -> None:
+        with self.assertRaises(ValueError):
+            insert_picorv32_kinded_multitrojan(self.source, [MAGIC_WORD], ["rotate"])
+
+    def test_force_inactive(self) -> None:
+        patched, names = insert_picorv32_kinded_multitrojan(
+            self.source, KIND_WORDS, KINDS, force_inactive=True)
+        for n in names:
+            self.assertIn(f"wire {n} = 1'b0;", patched)
+
+    @unittest.skipUnless(odin_available(), "needs ODIN3_LIB/PYTHONPATH")
+    def test_patched_core_still_parses(self) -> None:
+        from lemanruss.htl.odin_check import verilog_parses
+
+        patched, _ = insert_picorv32_kinded_multitrojan(self.source, KIND_WORDS, KINDS)
+        verilog_parses(patched)
 
 
 if __name__ == "__main__":
