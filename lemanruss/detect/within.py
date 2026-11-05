@@ -131,16 +131,59 @@ def run_form(det_name: str, rel: Release, form: str, seeds: Sequence[int],
     return res
 
 
+def _fmt(x: object) -> str:
+    return "n/a" if not isinstance(x, float) else f"{x:.3f}"
+
+
+def tables(out: Path, forms: Sequence[str] = ("gates", "lut4", "lut6")) -> str:
+    """Markdown: per form, pooled AUROC [95% CI over circuits], per-base AUROC, W/L/T vs the size
+    control over the held-out bases, the strict label, and scored/total."""
+    from lemanruss.detect.report import label
+
+    res = {p.stem[len("within-"):]: json.loads(p.read_text("utf-8"))
+           for p in sorted(out.glob("within-*.json"))}
+    order = [d for d in DETECTORS if d in res]
+    lines: list[str] = []
+    for form in forms:
+        size = res.get("size", {}).get(form, {})
+        control = {b: v for b, v in size.get("per_base", {}).items() if isinstance(v, float)}
+        bases = sorted({b for d in order for b in res[d].get(form, {}).get("per_base", {})})
+        lines += [f"### Form {form}", "",
+                  "| detector | pooled AUROC [95% CI] | " + " | ".join(bases)
+                  + " | W/L/T vs size | label | scored |",
+                  "|---|---|" + "---|" * len(bases) + "---|---|---|"]
+        for d in order:
+            r = res[d].get(form)
+            if not r:
+                continue
+            ci = r["ci"]
+            ci_t = None if ci is None else (float(ci[0]), float(ci[1]))
+            ci_s = "n/a" if ci_t is None else f"[{ci_t[0]:.3f}, {ci_t[1]:.3f}]"
+            pb = {b: v for b, v in r["per_base"].items() if isinstance(v, float)}
+            wl = "control" if d == "size" else "{}/{}/{}".format(*metrics.wlt(pb, control))
+            lines.append(f"| {d} | {_fmt(r['auroc'])} {ci_s} | "
+                         + " | ".join(_fmt(r["per_base"].get(b)) for b in bases)
+                         + f" | {wl} | {label(ci_t)} | {r['n_scored']}/{r['n_total']} |")
+            for b, msg in r.get("errors", {}).items():
+                lines.append(f"<!-- {d} {form} {b}: {msg} -->")
+        lines.append("")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> None:
     import argparse
 
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--release", type=Path, required=True)
+    ap.add_argument("--release", type=Path, default=Path("."))
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--detector", action="append", default=[])
     ap.add_argument("--forms", default="gates,lut4,lut6")
     ap.add_argument("--seeds", default="0,1,2")
+    ap.add_argument("--tables", action="store_true", help="print the markdown tables of --out")
     args = ap.parse_args(argv)
+    if args.tables:
+        print(tables(args.out))
+        return
     rel = Release(args.release, "Proc")
     seeds = tuple(int(x) for x in args.seeds.split(","))
     for det in args.detector or list(DETECTORS):
