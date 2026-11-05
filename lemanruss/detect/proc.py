@@ -41,8 +41,7 @@ def run_proc(det_name: str, releases: list[Release], proc: Release, seeds: tuple
         det.fit(views(train), [int(r.infected) for r in train], views(val),
                 [int(r.infected) for r in val], seed)
         vs = det.score(views(val))
-        clean = [s for s, r in zip(vs, val, strict=True) if not r.infected and not math.isnan(s)]
-        thr.append(metrics.threshold_at_fpr(clean))
+        thr.append(metrics.val_threshold(vs, [r.infected for r in val]))
         for s, r in zip(det.score(views(proc.records)), proc.records, strict=True):
             scores[r.id].append(s)
     res: dict[str, object] = {"detector": det_name, "seeds": list(seeds), "circuits": {}}

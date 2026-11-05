@@ -3,6 +3,7 @@ release prevalence and re-weighted, bootstrap over bases, W/L/T."""
 
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Callable, Mapping, Sequence
 
@@ -48,6 +49,19 @@ def threshold_at_fpr(clean_scores: Sequence[float], target: float = FPR_TARGET) 
         else:
             break
     return best
+
+
+def val_threshold(val_scores: Sequence[float], val_infected: Sequence[bool]) -> float:
+    """`threshold_at_fpr` over the scored clean circuits of a validation fold. When none is
+    scored, say how many were not (NaN), so a dead feature path is not read as a data problem."""
+    clean = [s for s, inf in zip(val_scores, val_infected, strict=True)
+             if not inf and not math.isnan(s)]
+    if not clean:
+        n_nan = sum(1 for s in val_scores if math.isnan(s))
+        raise ValueError(
+            f"validation fold has no scored clean circuit ({n_nan} of {len(val_scores)} "
+            "validation circuits scored NaN; check the feature path, e.g. Odin III for SCOAP)")
+    return threshold_at_fpr(clean)
 
 
 def rates(

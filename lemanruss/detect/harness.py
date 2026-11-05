@@ -57,9 +57,7 @@ def run_split(det: Detector, split: Split, seed: int) -> FoldRun:
     det.fit(_views(det, split.train), _labels(split.train), _views(det, split.val),
             _labels(split.val), seed)
     val_scores = det.score(_views(det, split.val))
-    clean = [s for s, r in zip(val_scores, split.val, strict=True)
-             if not r.infected and not math.isnan(s)]
-    thr = metrics.threshold_at_fpr(clean)
+    thr = metrics.val_threshold(val_scores, [r.infected for r in split.val])
     test_scores = det.score(_views(det, split.test))
     scores: dict[str, float] = {}
     failed: list[str] = []
