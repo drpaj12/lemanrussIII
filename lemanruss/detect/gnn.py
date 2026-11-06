@@ -123,6 +123,27 @@ class GnnDetector(Detector):
             self.graphs[key] = g
         return g
 
+    localises = True
+
+    def node_scores(self, circuit: CircuitFile) -> np.ndarray | None:
+        """Suspicion of a node = L1 norm of the gradient of the infected-minus-clean logit with
+        respect to the node's input features (one backward pass; the model is not changed)."""
+        import torch
+        from torch_geometric.data import Batch
+
+        assert self.model is not None
+        g = self._graph(circuit)
+        if g is None:
+            return None
+        data = Batch.from_data_list([g])
+        data.x = data.x.clone().requires_grad_(True)
+        self.model.eval()
+        lg = self.model(data)
+        (lg[0, 1] - lg[0, 0]).backward()
+        grad = data.x.grad
+        assert grad is not None
+        return np.asarray(torch.abs(grad).sum(dim=1).detach().numpy(), dtype=float)
+
     def _build(self, in_dim: int) -> Any:
         import torch
         from torch import nn
