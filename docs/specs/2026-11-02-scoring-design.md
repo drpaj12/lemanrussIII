@@ -276,3 +276,31 @@ hidden sample size and determinism for a fixed seed, and difference across seeds
 total cap; a report scanned for ids, net names and the seed; count matrix rounding; the schema
 agrees with the parser; the region definition on a hand-built Trojan; the bound table; an end to end run on Comb rc4 and Seq rc5 with a size-only score (gate count of the circuit
 file) when the release and key are present under `work/htl-rel`, else a toy release.
+
+## 10. Three-level score and the location match rule (Peter 2026-11-05)
+
+Implemented in `lemanruss/score/levels.py`; the paper's section on scoring states the same rule.
+
+Per circuit, `T` is the set of its Trojans (each with its region, section 9) and `C` the set of
+claims a detector makes (each claim names zero or more cells; a cell is the output net of a gate,
+latch or sub-circuit, by released net name). The score of one circuit is `|matched| / |C u T|`
+(1 if both are empty); the score at a level is the mean over circuits.
+
+- Level 1 (presence): `C` and `T` reduced to "at least one"; the circuit matrix.
+- Level 2 (count): matched = `min(|C|,|T|)`, union = `max(|C|,|T|)`.
+- Level 3 (location): **a claim hits a Trojan when a cell it names lies in that Trojan's region**,
+  that is logic that feeds the victim output and has no functionally equal counterpart in the
+  golden (section 9). **Matching is one to one**: a Trojan is hit by at most one claim and a claim
+  hits at most one Trojan (the largest such matching is used, found by augmenting paths).
+  matched = number of hits, union = `|C| + |T| - matched`.
+
+Cell counts at every level: TP = matched, FP = `|C|` - matched, FN = `|T|` - matched, TN = a clean
+circuit with no claim (level 1: circuit counts). Per circuit `s3 <= s2 <= s1`. Two wrong claims on
+an infected circuit score 1 at level 1 and 0 at level 3.
+
+Chance control: the claim lists are permuted among the circuits of one base and every named cell
+is redrawn at random from the circuit's cells (claim sizes kept); the expected score is computed
+per circuit. The label compares the detector with it (bootstrap over bases of the paired
+difference): ABOVE CHANCE when the 95% interval is above 0, BELOW CHANCE when below, INCONCLUSIVE
+when it touches 0. The region over-approximates (section 9), so the chance score at level 3 is
+well above 0 and must be read next to the detector's.
