@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import numpy as np
+
 from lemanruss.detect.data import CircuitFile
 
 
@@ -25,6 +27,13 @@ class Detector:
 
     def score(self, circuits: Sequence[CircuitFile]) -> list[float]:
         """Anomaly score per circuit, higher = more likely infected; NaN = could not score."""
+        raise NotImplementedError
+
+    localises = False  # True: node_scores gives a suspicion per netlist node
+
+    def node_scores(self, circuit: CircuitFile) -> np.ndarray | None:
+        """Suspicion per node of `lemanruss.detect.netlist.parse(circuit.path)` (higher = more
+        suspicious), or None when it cannot be computed. Only for `localises` detectors."""
         raise NotImplementedError
 
     def prepare(self, circuits: Sequence[CircuitFile]) -> None:

@@ -49,8 +49,34 @@ def safe_scoap(path: Path) -> ScoapFeat | None:
     return out if isinstance(out, ScoapFeat) else None
 
 
+def rare_node_scores(f: ScoapFeat) -> dict[str, float]:
+    """Per net: the lower of its controllability and observability outlier z-scores, plus 4 if
+    its signal probability is rarer than RARE_P (the two parts of `rare_score`)."""
+    if len(f.names) == 0:
+        return {}
+    z = np.minimum(robust_z(np.log1p(np.maximum(f.cc0, f.cc1))), robust_z(np.log1p(f.co)))
+    rare = np.zeros(len(f.names))
+    if f.sigprob_ran:
+        p = np.nan_to_num(f.p1, nan=0.5)
+        rare = (np.minimum(p, 1 - p) < RARE_P).astype(float)
+    sc = z + 4.0 * rare
+    return {n: float(v) for n, v in zip(f.names, sc, strict=True)}
+
+
 class RareScoap(Detector):
     name = "rare"
+    localises = True
+
+    def node_scores(self, circuit: CircuitFile) -> np.ndarray | None:
+        from lemanruss.detect.netlist import parse
+
+        f = cached("scoap", circuit, safe_scoap)
+        if f is None:
+            return None
+        per = rare_node_scores(f)
+        nl = parse(circuit.path)
+        lo = min(per.values(), default=0.0)
+        return np.array([per.get(n, lo) for n in nl.net_of], dtype=float)
 
     def prepare(self, circuits: Sequence[CircuitFile]) -> None:
         fill("scoap", circuits, safe_scoap)
