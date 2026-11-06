@@ -25,6 +25,7 @@ from lemanruss.detect import localise, metrics
 from lemanruss.detect.data import CircuitFile, Record, Release, ref_view, view
 from lemanruss.detect.netlist import parse
 from lemanruss.detect.run import make_detector
+from lemanruss.detect.sirelease import SiRelease
 from lemanruss.detect.splits import all_splits
 from lemanruss.score import levels
 from lemanruss.score.levels import Circ
@@ -39,18 +40,16 @@ def trojan_regions(reg: dict[str, Any], cid: str) -> tuple[frozenset[str], ...]:
     return tuple(frozenset(t["nets"]) for t in reg[cid]["trojans"])
 
 
-def run(det_name: str, rel: Release, regions: dict[str, Any], out: Path,
+def run(det_name: str, rel: Any, regions: dict[str, Any], out: Path,
         split: str = "base", seed: int = 0) -> None:
     out.mkdir(parents=True, exist_ok=True)
     det = make_detector(det_name)
-    if not det.localises:
-        raise SystemExit(f"{det_name} does not localise")
-
     def views(rs: list[Record]) -> list[CircuitFile]:
         return [ref_view(r) if det.needs_reference else view(r) for r in rs]
 
     det.prepare(views(rel.records))
-    for sp in all_splits(rel.records, split):
+    sps = rel.splits() if hasattr(rel, "splits") else all_splits(rel.records, split)
+    for sp in sps:
         f = out / f"{det_name}-{sp.name}-f{sp.fold}-s{seed}.json"
         if f.is_file():
             continue
@@ -61,7 +60,8 @@ def run(det_name: str, rel: Release, regions: dict[str, Any], out: Path,
         thr = metrics.val_threshold(vs, [r.infected for r in sp.val])
         items = []
         for s, r in zip(vs, sp.val, strict=True):
-            if r.infected and not math.isnan(s) and s >= thr and r.id in regions:
+            if det.localises and r.infected and not math.isnan(s) and s >= thr \
+                    and r.id in regions:
                 ns = det.node_scores(view(r))
                 if ns is not None:
                     items.append((parse(r.path), ns, trojan_regions(regions, r.id)))
@@ -74,17 +74,20 @@ def run(det_name: str, rel: Release, regions: dict[str, Any], out: Path,
                 failed.append(r.id)
                 continue
             scores[r.id] = float(s)
-            if s >= thr:
+            if s >= thr and det.localises:
                 ns = det.node_scores(view(r))
                 claims[r.id] = ([] if ns is None
                                 else localise.claims_from_scores(parse(r.path), ns, z))
+            elif s >= thr:
+                claims[r.id] = []
         f.write_text(json.dumps({
             "fold": sp.fold, "threshold": thr, "z": z, "n_val_tuned": len(items),
-            "scores": scores, "claims": claims, "failed": failed}), encoding="utf-8")
+            "scores": scores, "claims": claims, "failed": failed,
+            "localises": det.localises}), encoding="utf-8")
         print(det_name, "fold", sp.fold, "z", z, "tuned on", len(items), flush=True)
 
 
-def circs_of(rel: Release, regions: dict[str, Any], folds: list[dict[str, Any]]) -> list[Circ]:
+def circs_of(rel: Any, regions: dict[str, Any], folds: list[dict[str, Any]]) -> list[Circ]:
     by_id = {r.id: r for r in rel.records}
     out: list[Circ] = []
     for fd in folds:
@@ -94,12 +97,14 @@ def circs_of(rel: Release, regions: dict[str, Any], folds: list[dict[str, Any]])
             if r.infected and not regs:
                 continue
             cl = tuple(frozenset(c) for c in fd["claims"].get(cid, []))
+            if cid in fd["claims"] and not cl:  # flagged: a claim with no cells (level 1)
+                cl = (frozenset(),)
             n = int(regions[cid]["n_nets"]) if r.infected else 0
             out.append(Circ(cid, r.base, regs, cl, n))
     return out
 
 
-def report(det_name: str, rel: Release, regions: dict[str, Any], out: Path,
+def report(det_name: str, rel: Any, regions: dict[str, Any], out: Path,
            seed: int = 0) -> dict[str, Any]:
     files = sorted(out.glob(f"{det_name}-base-f*-s{seed}.json"))
     folds = [json.loads(p.read_text("utf-8")) for p in files]
@@ -111,6 +116,7 @@ def report(det_name: str, rel: Release, regions: dict[str, Any], out: Path,
     nclaims = [len(c.claims) for c in circs if c.claims]
     return {"detector": det_name, "n_folds": len(folds), "n_circuits": len(circs),
             "n_failed": sum(len(f["failed"]) for f in folds), "auroc": au,
+            "localises": bool(folds and folds[0].get("localises", True)),
             "z_by_fold": [f["z"] for f in folds],
             "claims_per_flagged_circuit": (sum(nclaims) / len(nclaims)) if nclaims else None,
             "levels": {str(k): v for k, v in summ.items()}}
@@ -130,9 +136,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--family", default="")
     ap.add_argument("--release", type=Path, required=True)
     ap.add_argument("--regions", type=Path, required=True)
+    ap.add_argument("--si", action="store_true", help="release is Seeker-Si")
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args(argv)
-    rel = Release(args.release, args.family)
+    rel: Any = SiRelease(args.release) if args.si else Release(args.release, args.family)
+    if args.si and not args.regions.is_file():
+        args.regions.write_text(json.dumps(rel.regions()), encoding="utf-8")
     regions = load_regions(args.regions)
     t0 = time.time()
     if args.cmd == "run":
