@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import random
 import resource
 import shutil
@@ -25,7 +26,8 @@ from lemanruss.htl.si_build import BaseCfg, SiBuild
 from lemanruss.seedsrc import release_seed
 
 Json = dict[str, Any]
-WS = Path("/home/jamiespa/odin3-ws/work")
+# Roots come from the environment (default ~/odin3-ws layout): no home path is committed.
+WS = Path(os.environ.get("LEMANRUSS_WS", str(Path.home() / "odin3-ws" / "work")))
 LADDER = WS / "sifix3-out" / "ladder2"
 FAMILY = "silicon"
 VERSION = "2.0-rc1"
@@ -60,7 +62,8 @@ BASES: dict[str, BaseCfg] = {c.name: c for c in (
 )}
 ORDER = list(BASES)  # smallest first
 PDK_V = WS / "tools/pdk/sky130A/libs.ref/sky130_fd_sc_hd/verilog"
-ODIN_BIN = Path("/home/jamiespa/odin3-ws/odin3/build/rel-main3/odin3")
+ODIN_BIN = Path(os.environ.get(
+    "ODIN3_BIN", str(Path.home() / "odin3-ws" / "odin3" / "build" / "rel-main3" / "odin3")))
 
 
 def _peak_mb() -> dict[str, int]:
