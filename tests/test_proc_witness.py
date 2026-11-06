@@ -32,6 +32,7 @@ WS = Path(os.environ.get("ODIN3_WS", "~/odin3-ws")).expanduser()
 MCU_UP = WS / "external" / "Arduino-on-RISC-V"
 DARK_UP = WS / "external" / "darkriscv"
 PICO_UP = WS / "external" / "picorv32"
+SLOW = os.environ.get("LEMANRUSS_SLOW") == "1"
 ODIN_BIN = Path(os.environ.get("ODIN3_BIN", str(WS / "odin3" / "build" / "release" / "odin3")))
 
 
@@ -152,14 +153,18 @@ class TestDarkRmdataWidth(unittest.TestCase):
     "needs a built Odin III and the three external checkouts",
 )
 class TestBuildOneCircuitDraws(unittest.TestCase):
-    """The draws that failed in the round 11 section 4 batch, replayed through the real gates."""
+    """The draws that failed in the round 11 section 4 batch, replayed through the real gates.
+
+    The functional gates (FF equality, per-Trojan witness, neutral silence, shipped silence) run
+    by default. The release gate (form mapping plus ABC miter equivalence, about 90 of 110 s for
+    a darkriscv circuit) is an end-to-end check that only runs with LEMANRUSS_SLOW=1."""
 
     def _run(self, base: str, kinds: list[str], words: list[int]) -> None:
         from lemanruss.htl.proc_build import build_one_circuit
 
         with tempfile.TemporaryDirectory() as tmp:
             b = build_one_circuit("t-0001", base, random.Random(0), set(), ODIN_BIN, Path(tmp),
-                                  forced=(kinds, words))
+                                  forced=(kinds, words), functional_only=not SLOW)
             self.assertTrue(b.gate_pass, (b.error, b.per_trojan_fires, b.silent_on_neutral,
                                           b.silent_on_neutral_shift))
 
