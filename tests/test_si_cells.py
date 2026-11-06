@@ -57,3 +57,22 @@ class SiCellsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SameNetworkTest(unittest.TestCase):
+    A = ".model top\n.inputs a b\n.outputs y\n.names a b y\n11 1\n.end\n"
+
+    def test_pin_order_does_not_matter(self) -> None:
+        b = ".model top\n.inputs a b\n.outputs y\n.names b a y\n11 1\n.end\n"
+        self.assertTrue(sc.same_network(self.A, b))
+
+    def test_function_difference_is_seen(self) -> None:
+        b = ".model top\n.inputs a b\n.outputs y\n.names a b y\n1- 1\n-1 1\n.end\n"
+        self.assertFalse(sc.same_network(self.A, b))
+
+    def test_asymmetric_function_follows_the_net_not_the_position(self) -> None:
+        a = ".model top\n.inputs a b\n.outputs y\n.names a b y\n10 1\n.end\n"
+        b = ".model top\n.inputs a b\n.outputs y\n.names b a y\n01 1\n.end\n"
+        c = ".model top\n.inputs a b\n.outputs y\n.names b a y\n10 1\n.end\n"
+        self.assertTrue(sc.same_network(a, b))
+        self.assertFalse(sc.same_network(a, c))

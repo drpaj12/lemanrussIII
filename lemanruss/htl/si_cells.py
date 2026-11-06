@@ -254,3 +254,40 @@ def verilog_to_blif(text: str, inputs: list[str], outputs: list[str]) -> str:
     return "\n".join([".model top", ".inputs " + " ".join(inputs),
                       ".outputs " + " ".join(outputs), *body, ".end"]) + "\n"
 
+
+
+def _canon(text: str) -> dict[str, tuple[object, ...]] | None:
+    """Per driven net: its function over the sorted fanin names (a flip-flop: its D net). None
+    when a net has two drivers or a cover has more than 8 inputs."""
+    from lemanruss.htl.obfuscate import parse
+
+    _ins, _outs, blocks = parse(text)
+    out: dict[str, tuple[object, ...]] = {}
+    val: tuple[object, ...]
+    for blk in blocks:
+        w = blk[0].split()
+        if w[0] == ".latch":
+            key, val = w[2], ("L", w[1])
+        else:
+            nets = w[1:-1]
+            n = len(nets)
+            if n > 8:
+                return None
+            tt = cover_tt(n, blk[1:])
+            order = sorted(range(n), key=lambda i: nets[i])
+            canon = 0
+            for m in range(1 << n):
+                src = sum(((m >> j) & 1) << order[j] for j in range(n))
+                canon |= ((tt >> src) & 1) << m
+            key, val = w[-1], ("N", tuple(nets[i] for i in order), canon)
+        if key in out:
+            return None
+        out[key] = val
+    return out
+
+
+def same_network(a: str, b: str) -> bool:
+    """True when both BLIFs drive the same nets with the same functions of the same fanin nets,
+    so they are the same network (a proof of equivalence needing no solver)."""
+    ca, cb = _canon(a), _canon(b)
+    return ca is not None and ca == cb
