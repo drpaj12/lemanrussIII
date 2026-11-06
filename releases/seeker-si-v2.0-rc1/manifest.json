@@ -1,0 +1,1014 @@
+{
+ "bases": [
+  "mmuart",
+  "simple_spi",
+  "verilog_cordic_core"
+ ],
+ "circuits": [
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si0057.blif",
+   "blif_bytes": 253798,
+   "blif_sha256": "2834240d3fc9df1020826f91b7795dd5bcf064698d6e3977a36ad82c92af0f35",
+   "id": "si0057",
+   "v": "circuits/si0057.v",
+   "v_bytes": 609890,
+   "v_sha256": "5ead8d8cf78b0e57ff9a4b472e1a69a79b9b3d4f86bce87619dce34eb115dc49"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si0076.blif",
+   "blif_bytes": 17086,
+   "blif_sha256": "ef3e4da39f3657510627bdf5b41aa210543a2624dff18c1d6d5054b12bed126e",
+   "id": "si0076",
+   "v": "circuits/si0076.v",
+   "v_bytes": 40495,
+   "v_sha256": "b48451bbd5ecfe4c0aec9ef1008dc526ad1429a647f3944aac3aadec4afdb0f7"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si0137.blif",
+   "blif_bytes": 17264,
+   "blif_sha256": "87febd195fd2157d3c91be1168bcb48e5ce816f984fb4eb61ddd736a9d5c3a9b",
+   "id": "si0137",
+   "v": "circuits/si0137.v",
+   "v_bytes": 40917,
+   "v_sha256": "684ebdd86954d1cc3f5201c225dc8c1d6770597c7e238bcd2df3cbd02d65e212"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si0193.blif",
+   "blif_bytes": 22295,
+   "blif_sha256": "60005a5c1058aef121e3661538698d0dc5ca231edf7ac56328c6975c70a6c9dc",
+   "id": "si0193",
+   "v": "circuits/si0193.v",
+   "v_bytes": 55364,
+   "v_sha256": "1d42bd20114506ae68d580abff3a002d3ea1b2fec8d9eb4925b3b50050cc1301"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si0238.blif",
+   "blif_bytes": 243830,
+   "blif_sha256": "b8a067e0d4b98b96aeb1645abc357fab7f72e892770af277a30625dd9a826672",
+   "id": "si0238",
+   "v": "circuits/si0238.v",
+   "v_bytes": 594099,
+   "v_sha256": "7fda3bfa367d1eaafc03831367984717332f034328ec4b66e14699ec142a4f72"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si0547.blif",
+   "blif_bytes": 267320,
+   "blif_sha256": "575ad129e5a75f3008b7cbff427280a5d8e05fd9999cd3965466745e43b547f2",
+   "id": "si0547",
+   "v": "circuits/si0547.v",
+   "v_bytes": 650132,
+   "v_sha256": "1ed1295370b9f9f2a41992883e552abc4b147d30c96f5e9f0a159239910388ba"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si0660.blif",
+   "blif_bytes": 22679,
+   "blif_sha256": "2054ff97e62849a450fffc9e184b1bc76d4a327ace177bc167ad5d51b58b502a",
+   "id": "si0660",
+   "v": "circuits/si0660.v",
+   "v_bytes": 56092,
+   "v_sha256": "8d4f21abe8f229120002ad9bcf918eaa9987601c33c04e50d12afef21d07f911"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si0675.blif",
+   "blif_bytes": 257205,
+   "blif_sha256": "c1caa470c8479728b0d89cbe1bbbe936c31a72da48c97d6bd44e4c9292c38824",
+   "id": "si0675",
+   "v": "circuits/si0675.v",
+   "v_bytes": 616679,
+   "v_sha256": "510effc172c8a831e62ac831b46e2d8696ff618a6710e7a384522ae871e4f89d"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si0768.blif",
+   "blif_bytes": 277166,
+   "blif_sha256": "d229e1b86d79dfd3c3cee3b9bd5d2292011a096412192d3dc696d754016fdf39",
+   "id": "si0768",
+   "v": "circuits/si0768.v",
+   "v_bytes": 668857,
+   "v_sha256": "b72dcb6783e7d18c754d747f33156b21aaba145fcc29c6663baee6ff0782850a"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si0781.blif",
+   "blif_bytes": 16640,
+   "blif_sha256": "44ad27e5cc380995d8fd73d09b6defe36f09f47e2d4c756c98245fc6ff3deb59",
+   "id": "si0781",
+   "v": "circuits/si0781.v",
+   "v_bytes": 39128,
+   "v_sha256": "4df25425a5c644d470fa0a53e7e715b68c91fdc14cdb9f37c0e0cd3b76f590f9"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si0785.blif",
+   "blif_bytes": 272630,
+   "blif_sha256": "b62beb0cb85bac5b119bcafcfc1ceef16d6ccc8483425e44b73a5b8344b377d7",
+   "id": "si0785",
+   "v": "circuits/si0785.v",
+   "v_bytes": 658602,
+   "v_sha256": "85bbd3f900d8eaef4d0c9d64f94d05c32724f74657066351f30d7f45c2b242cd"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si0862.blif",
+   "blif_bytes": 17219,
+   "blif_sha256": "9785174724b288a4e869b06b6ff79e75393c933ebb14ae679001cff6ebf71c29",
+   "id": "si0862",
+   "v": "circuits/si0862.v",
+   "v_bytes": 41332,
+   "v_sha256": "d11200eceac10a5996fdb2635fdd5878c04cc1e235b01df459094db90f3bf391"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si1091.blif",
+   "blif_bytes": 17635,
+   "blif_sha256": "1062f241ab0bf14d9402cbe92942c91fe32e59a8937909c1c9c82c1ab936a259",
+   "id": "si1091",
+   "v": "circuits/si1091.v",
+   "v_bytes": 42242,
+   "v_sha256": "fe6ac78ea047596b59c46b9c5eba1e1660ab03ba43af9c7cd12b8cd4970c843d"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si1421.blif",
+   "blif_bytes": 258523,
+   "blif_sha256": "fcc844f8e25f7f2bfc91ea745157dcc963e6703b5445fd1653590ad538157eea",
+   "id": "si1421",
+   "v": "circuits/si1421.v",
+   "v_bytes": 622171,
+   "v_sha256": "bb7327edafc8981813758bafd789527fcc5a31bbd2e9d426dcd73215f74ef54e"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si1439.blif",
+   "blif_bytes": 252862,
+   "blif_sha256": "87437617dc8279d5cfbdd2bb6c40a03a8491229b2e73083beb4bf82ae2ca5299",
+   "id": "si1439",
+   "v": "circuits/si1439.v",
+   "v_bytes": 606575,
+   "v_sha256": "39ecb6856c3f4a2f84c736ceb0f8560195ac174459b2fda83354574b0ceb4382"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si1495.blif",
+   "blif_bytes": 22730,
+   "blif_sha256": "ca87fb7bd3e15c4f656a094cb3dc4ca39536054bb8869f8e4de444b59a01c415",
+   "id": "si1495",
+   "v": "circuits/si1495.v",
+   "v_bytes": 55674,
+   "v_sha256": "366cc98bdc17b9d8077b4d52089010d99021dfa471eaf81a4d7ebaf3c840bf36"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si1583.blif",
+   "blif_bytes": 265561,
+   "blif_sha256": "5abeae81e7e628a2352108468ac754585403a986f68d911058a546fe2b759083",
+   "id": "si1583",
+   "v": "circuits/si1583.v",
+   "v_bytes": 645706,
+   "v_sha256": "655edba66b578e061d409b2c7796ab3ca6cdbc6e9dae16af98899d57af157fca"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si1624.blif",
+   "blif_bytes": 19104,
+   "blif_sha256": "412d69251a62c4f2599550ea35eafd9dda686aaf6c22affd21e8a9b320448e64",
+   "id": "si1624",
+   "v": "circuits/si1624.v",
+   "v_bytes": 45626,
+   "v_sha256": "4aa3e2a45bbe0058899c006d9718266484e91aa7e6e302d41a9e8b37510d2e8e"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si1640.blif",
+   "blif_bytes": 17514,
+   "blif_sha256": "4a5ec3e826bf0f5df973cca03611673d166d64df873e7f8278c779b9a2243d52",
+   "id": "si1640",
+   "v": "circuits/si1640.v",
+   "v_bytes": 41684,
+   "v_sha256": "77f4683722bf0770630cb4263b809243c0d61766f9aa8ded932f97ca41380b66"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si1673.blif",
+   "blif_bytes": 270683,
+   "blif_sha256": "49873ca4bfc92a65ffdb2a4cf4a5f59956f43536362bdd01a2d33126ef970eb4",
+   "id": "si1673",
+   "v": "circuits/si1673.v",
+   "v_bytes": 656962,
+   "v_sha256": "63c176a16cc6c7665d5f35c10d3a5783f4b4691823cbbeeb1775385dddb44eaa"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si1860.blif",
+   "blif_bytes": 22199,
+   "blif_sha256": "579379a4be618f29f73f0aa38e7112dc6701dd6459f919199dc9e60fc02218a1",
+   "id": "si1860",
+   "v": "circuits/si1860.v",
+   "v_bytes": 55001,
+   "v_sha256": "a58159ca48baefca95c1a5482372ecbd00dc4cb3d1681f5d47d4971e09a7d62d"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si2127.blif",
+   "blif_bytes": 16675,
+   "blif_sha256": "3a4101efe1c779f86d5e6abd1fe956bc9c011df523280984340fa9a213bc3f23",
+   "id": "si2127",
+   "v": "circuits/si2127.v",
+   "v_bytes": 39392,
+   "v_sha256": "e291b6e29708620b210db599d59e97087d0584d20870fd007a8998460462daa8"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si2172.blif",
+   "blif_bytes": 17760,
+   "blif_sha256": "0ff13f695cffeefdba67df68c9fdb7b59c20269d88444343505313a1c6ed51f7",
+   "id": "si2172",
+   "v": "circuits/si2172.v",
+   "v_bytes": 42640,
+   "v_sha256": "8a40361ef8c3030cd2684378f4bd7a95f291f62345b24090a20cb55a03568843"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si2193.blif",
+   "blif_bytes": 22568,
+   "blif_sha256": "a70b1da1b3dcdfca6cd366e76c2bd8d55f72d26a57b7cd496d82a7e91dfae286",
+   "id": "si2193",
+   "v": "circuits/si2193.v",
+   "v_bytes": 55848,
+   "v_sha256": "5b0d0dff87eb6cb46588bececa0a8e28b918490d3fc11fe6d6c290e60a6683ee"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si2430.blif",
+   "blif_bytes": 18337,
+   "blif_sha256": "45ea635299e40819970886cfe49badc9b87d7a6829d24a68090d74a2e253ff45",
+   "id": "si2430",
+   "v": "circuits/si2430.v",
+   "v_bytes": 43471,
+   "v_sha256": "032d7d0545c68697682ea80b35002aff48fde0a8a0276c05e305505f73b11ee0"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si2448.blif",
+   "blif_bytes": 17075,
+   "blif_sha256": "69d437726a85cdcdec5c4733e3d07bdfedc55c1b30024fda8d798f29402901d9",
+   "id": "si2448",
+   "v": "circuits/si2448.v",
+   "v_bytes": 40889,
+   "v_sha256": "ff46cf26d8706b9a31b5fc8a381752a4ef30c8805c294102e0250da240a8c641"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si2570.blif",
+   "blif_bytes": 16995,
+   "blif_sha256": "20ccd6f58f680565c2a58c04e69ae08582aaf445fa7f0fb47bbb75ff3d3e55e4",
+   "id": "si2570",
+   "v": "circuits/si2570.v",
+   "v_bytes": 40191,
+   "v_sha256": "19a822b6e2d625b2b41acbc9ef580796788b8c55232e7d682220411fa828995f"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si2707.blif",
+   "blif_bytes": 17431,
+   "blif_sha256": "6313398ef971e1d1813428f50e7c10ead49c972b549fb61bc75fbb0eae1766a5",
+   "id": "si2707",
+   "v": "circuits/si2707.v",
+   "v_bytes": 41994,
+   "v_sha256": "01e096fbe071f3b47795b4f5e64e831f9cebbb5f288be75c8e98c93d3cc55542"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si2740.blif",
+   "blif_bytes": 22181,
+   "blif_sha256": "08917753353737218aa3e86d3e41237658d289ba88eb00ea7f5393f996122dd4",
+   "id": "si2740",
+   "v": "circuits/si2740.v",
+   "v_bytes": 55072,
+   "v_sha256": "12238b1ad675b415393a9c25c7aec25fbc0e5143b76236e8eb423395afebe156"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si2808.blif",
+   "blif_bytes": 17103,
+   "blif_sha256": "792d04039e20dd3608d3073b7986868f6b3c002ac94b71a58642ad907cf4ff31",
+   "id": "si2808",
+   "v": "circuits/si2808.v",
+   "v_bytes": 40968,
+   "v_sha256": "234d5b08603241ae3626eb4738e801f8afe87b9423140faa93c9920d822e4de8"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si2820.blif",
+   "blif_bytes": 22379,
+   "blif_sha256": "157e86af957344c084f4e34cec355d15b2befed5d25f5def5d973cd1a342984c",
+   "id": "si2820",
+   "v": "circuits/si2820.v",
+   "v_bytes": 55177,
+   "v_sha256": "716afad09f2f97746f15ee8d7aba1063af300b022948bf344b0e343a2af8aece"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si2994.blif",
+   "blif_bytes": 266474,
+   "blif_sha256": "f3bb51a8b323672031f4092c3bde0aa0cfc04164c5bdbfdb94bbb1f9ad4dcd11",
+   "id": "si2994",
+   "v": "circuits/si2994.v",
+   "v_bytes": 646538,
+   "v_sha256": "54a7c56cacdad596882f5d5095eee856ede60c5eaf9c8b1aca809fd889067d49"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si3101.blif",
+   "blif_bytes": 22887,
+   "blif_sha256": "b44f2f8c31664586ba7b46cf90676f7d72e41f97791516dafaaaf4c7abeeb1f7",
+   "id": "si3101",
+   "v": "circuits/si3101.v",
+   "v_bytes": 56983,
+   "v_sha256": "44f7261280a3a4cce1dc446c887c89ac6351d81a6c2a20a0e018c3820db3790f"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si3127.blif",
+   "blif_bytes": 247374,
+   "blif_sha256": "f772f24c85470817daf683e71d8641a784c251c8dbe6b993ac32cb818e5c0654",
+   "id": "si3127",
+   "v": "circuits/si3127.v",
+   "v_bytes": 600086,
+   "v_sha256": "36fd9cf8e7df4eec94d47d55205c011d52093f74dc0ed72a3804a22b53844792"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si3149.blif",
+   "blif_bytes": 16991,
+   "blif_sha256": "eb4bcee83dc9e026eb2e3b3cd21703518dd46c929b2e81182583641e9191ae2e",
+   "id": "si3149",
+   "v": "circuits/si3149.v",
+   "v_bytes": 40745,
+   "v_sha256": "5b085661bbff23e3d2417f11d47f90c397dc22e40275617641d7145510a3c0dd"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si3174.blif",
+   "blif_bytes": 274592,
+   "blif_sha256": "445ea3409a5e37e7a8e8112b33895c1549bfdf790267c7321ee8d89538d07a7f",
+   "id": "si3174",
+   "v": "circuits/si3174.v",
+   "v_bytes": 662620,
+   "v_sha256": "a99965e904e2db8c6458b74b8b4a465968bc735660d5fe43cbdb04675dfbe41a"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si3221.blif",
+   "blif_bytes": 16855,
+   "blif_sha256": "241945cbb3a4ff6d298affa796ba606eae3b94f7a9a22fc33b8ffba9f641aaf5",
+   "id": "si3221",
+   "v": "circuits/si3221.v",
+   "v_bytes": 40271,
+   "v_sha256": "f5e4921dee8e3086303a5e222c641c4b696dc2a9ec9a49071231504e8638f095"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si3236.blif",
+   "blif_bytes": 17301,
+   "blif_sha256": "9116693117143fc4f1c7c7bf7d8c1db794a435bf15ce6335b8ee9822d1c03715",
+   "id": "si3236",
+   "v": "circuits/si3236.v",
+   "v_bytes": 41059,
+   "v_sha256": "1bec142a57723417a2b22bb6f6bf2beadff426caa2394bafec97e47a4bfb71b0"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si3520.blif",
+   "blif_bytes": 267926,
+   "blif_sha256": "35cc82d9247e92b4987ff6a1d330b3ac4e30ac5d6788764fb2784bbaeb6fed24",
+   "id": "si3520",
+   "v": "circuits/si3520.v",
+   "v_bytes": 651383,
+   "v_sha256": "1342f56f8e6343a6bf98cb9f7e8bb1e3271b437ff4bb8d2aab2e3f31af381876"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si3639.blif",
+   "blif_bytes": 22532,
+   "blif_sha256": "50c120edd8e3aac2b2be8fdad6c2b6118dc704c329a00a63929c727a5a8615b8",
+   "id": "si3639",
+   "v": "circuits/si3639.v",
+   "v_bytes": 56498,
+   "v_sha256": "c4d83a067f8d76136d6357ae542ec79f5be23dd46d1530400b3afd2e5e012e1c"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si3671.blif",
+   "blif_bytes": 18878,
+   "blif_sha256": "3d748489ca6e62304e32c64704a73e86fea1517545a5fad40ef727a05bc89b29",
+   "id": "si3671",
+   "v": "circuits/si3671.v",
+   "v_bytes": 45511,
+   "v_sha256": "fc0451d09c4dfc42ad0f8f18194ffbb88f9fdff45181f108f90f8c0e8b348ce8"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si3857.blif",
+   "blif_bytes": 17841,
+   "blif_sha256": "d87206718f2cf2fb94cd167b0053a4a1dc22be0cc795868c4f51efc6377896ec",
+   "id": "si3857",
+   "v": "circuits/si3857.v",
+   "v_bytes": 42183,
+   "v_sha256": "d10fed7735e627a9c7d952cc7845000c927ac43056edcead05370d991d1764f2"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si4028.blif",
+   "blif_bytes": 21915,
+   "blif_sha256": "9b55147d0d9012f67f7a10feb1d9da712f1510dd8ebee9284b5d1145b106a4a3",
+   "id": "si4028",
+   "v": "circuits/si4028.v",
+   "v_bytes": 54119,
+   "v_sha256": "d06b829b3491295afd9b8e6a5349602881871b5d840914f50c88bb29fcc237cb"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si4125.blif",
+   "blif_bytes": 16764,
+   "blif_sha256": "c31b6908751d6b96da860c0dd2cd36b63c2cface3a6bf6408bc0e3c0973f67bc",
+   "id": "si4125",
+   "v": "circuits/si4125.v",
+   "v_bytes": 39448,
+   "v_sha256": "93c306d49fc021d1ee0b686d7bc0a83e4c719c0b34917aba97b492e083fe6e4e"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si4353.blif",
+   "blif_bytes": 21909,
+   "blif_sha256": "69e0fef4a76f9d3ad6557378ea3ce9573772de5f6b2fbf5609b8a9a7fbfaac57",
+   "id": "si4353",
+   "v": "circuits/si4353.v",
+   "v_bytes": 53472,
+   "v_sha256": "6a527d6bba5e0bc08a65a88b7d598afc96b741ebddac608d92e81fd69a5eb067"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si4545.blif",
+   "blif_bytes": 22317,
+   "blif_sha256": "c0af094a4fec3699509f5d70b7339510df9969f9616de20c73116aab3780c129",
+   "id": "si4545",
+   "v": "circuits/si4545.v",
+   "v_bytes": 54473,
+   "v_sha256": "ed86260b2aa9f62f3fd90ba4a7fd9381cf351a4509c9e2c5fca34ad84f862657"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si4605.blif",
+   "blif_bytes": 22825,
+   "blif_sha256": "ed191f4b191e880f343215dd71bb8343060c94aa36f3a1003bd9635868985a3d",
+   "id": "si4605",
+   "v": "circuits/si4605.v",
+   "v_bytes": 56552,
+   "v_sha256": "c04eaddf84edf000538b4551f7e331d6ce3e1404a4739e679413c810ddaf62b3"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si4742.blif",
+   "blif_bytes": 22671,
+   "blif_sha256": "1186427a162b56e21833bbdca106f3ca931a4d88409f81f2c0e5c721afc89df0",
+   "id": "si4742",
+   "v": "circuits/si4742.v",
+   "v_bytes": 55115,
+   "v_sha256": "025ff7c24f00d5e43b8eea5d9b029690a1b922f162b75156ac5a933618a15a3f"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si4828.blif",
+   "blif_bytes": 22159,
+   "blif_sha256": "852b9e4179526cf512565d05023d02cf2b3272bb9912befa28fc135fbf86b79d",
+   "id": "si4828",
+   "v": "circuits/si4828.v",
+   "v_bytes": 54215,
+   "v_sha256": "cac71461502f1d6df94563ea6684b93c0e9a7d1b09ca85ec6fece3217d0a8de9"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si4959.blif",
+   "blif_bytes": 23297,
+   "blif_sha256": "c2d38158fde9cf7c3e4cea79f7ab1ee1d172b5970259b1da72679d700f5ae45c",
+   "id": "si4959",
+   "v": "circuits/si4959.v",
+   "v_bytes": 56966,
+   "v_sha256": "4e7a0a22e2a70e25a331cca7b231657387e78950d47acca124f171be787941bc"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si4970.blif",
+   "blif_bytes": 23373,
+   "blif_sha256": "48f1c8de82871adddd98213fe49f95286814e361736a385470bb54ce41894192",
+   "id": "si4970",
+   "v": "circuits/si4970.v",
+   "v_bytes": 57507,
+   "v_sha256": "44589425b44be929a7a3ae6ce2b6ea48afca253d0d33680d69c0297f3488d815"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si5005.blif",
+   "blif_bytes": 16835,
+   "blif_sha256": "bbd1b7b46ad671bcadfeafff6e131d6ecbeb98c929ac5c4ad7fba45012bb57bd",
+   "id": "si5005",
+   "v": "circuits/si5005.v",
+   "v_bytes": 40332,
+   "v_sha256": "9e9e3ac65313d0dd6915a10fd8250e415b051b0e5d12a730f415da617ae5fe9f"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si5203.blif",
+   "blif_bytes": 23532,
+   "blif_sha256": "29c0117fecd40ee83a595e62f4503e034c40c113364cf4d0f5993b57be1a031f",
+   "id": "si5203",
+   "v": "circuits/si5203.v",
+   "v_bytes": 57668,
+   "v_sha256": "e1a68c94d265e4e84d4a638a858d4d7824624acd7e05b6321b71ee40057c82ae"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si5216.blif",
+   "blif_bytes": 16534,
+   "blif_sha256": "4734fb3ce82ad16931e34e5b95a141a5d9acd5c095726b7f669268e01b7e65fe",
+   "id": "si5216",
+   "v": "circuits/si5216.v",
+   "v_bytes": 38708,
+   "v_sha256": "fd3cc212530a756c504968b281adfa685acdc839c80e20d4ffdcbd8ddcbfb33b"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si5266.blif",
+   "blif_bytes": 23177,
+   "blif_sha256": "ee82b5ae509cb885f385858aabf0bf145fdc1087bc258263a9c365be3f241a67",
+   "id": "si5266",
+   "v": "circuits/si5266.v",
+   "v_bytes": 57212,
+   "v_sha256": "a47744f217d44406c5fde9d64187b179a853060626b2cb5310287555805e93aa"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si5270.blif",
+   "blif_bytes": 22747,
+   "blif_sha256": "72110718a5970feacdff089216a80b7b67593769319e829d23eba4d37f480242",
+   "id": "si5270",
+   "v": "circuits/si5270.v",
+   "v_bytes": 55931,
+   "v_sha256": "cf23734216caa9be4b5086bb0371755587e3ef27a2f5afe330a5bd42d98e323a"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si5348.blif",
+   "blif_bytes": 269072,
+   "blif_sha256": "8e8b96b3a965a0da86aa295b5ec8768992620ecebbcbc79b0c7f75b825df928e",
+   "id": "si5348",
+   "v": "circuits/si5348.v",
+   "v_bytes": 648918,
+   "v_sha256": "41eff833d6936baf97d1ff8968cf291322cb6791b4de3a6d04c05781016dc542"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si5447.blif",
+   "blif_bytes": 22220,
+   "blif_sha256": "f62823ffe3cffe876cb4e18a88f450e4ab1f4a8c7d8fde6aa75e7d98b925b2f5",
+   "id": "si5447",
+   "v": "circuits/si5447.v",
+   "v_bytes": 54353,
+   "v_sha256": "d61b7fd6b55812fbac6c25172a6972a4b88f8efe8bb464be041c339ea5e0118a"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si5655.blif",
+   "blif_bytes": 22692,
+   "blif_sha256": "b9086b4af9c285e692422effaf337e82b01e24acd15b82da442d9daac26f6cc3",
+   "id": "si5655",
+   "v": "circuits/si5655.v",
+   "v_bytes": 56638,
+   "v_sha256": "f8b072bb1d04337fcbd06f88e512addd1e535cd31e735892098f8a889f8c7cd6"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si5662.blif",
+   "blif_bytes": 22627,
+   "blif_sha256": "73c55d29ad2d0cfd85f241ccdacd0612e981ce1569f153261a00e961f953a4b1",
+   "id": "si5662",
+   "v": "circuits/si5662.v",
+   "v_bytes": 56187,
+   "v_sha256": "d5404c2b56a2317297a932b7abaa5be9b2ecf2be67892796903cd82d50887600"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si5722.blif",
+   "blif_bytes": 253734,
+   "blif_sha256": "92f0ab3f60501d7a440b2cad5c90f45f70e132a3991fb67fce5e7f8527ecf101",
+   "id": "si5722",
+   "v": "circuits/si5722.v",
+   "v_bytes": 606832,
+   "v_sha256": "dea88039acf0d247251403a6426457445d1d8a40ff7ebb9b76f2a8ea768a7577"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si5809.blif",
+   "blif_bytes": 16504,
+   "blif_sha256": "523956caf1d3d4972f93507630a2a7698101268aca8ab6b46f80604d487fbed1",
+   "id": "si5809",
+   "v": "circuits/si5809.v",
+   "v_bytes": 38732,
+   "v_sha256": "1600c709361bbb74d338ed1101533da38b8c7fdc2b36786b5f68a961a010c6c7"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si5912.blif",
+   "blif_bytes": 254979,
+   "blif_sha256": "d0d0b894458c53c617d3b0039950ef18ac4942bd203f9aeef30d6aa6254041bb",
+   "id": "si5912",
+   "v": "circuits/si5912.v",
+   "v_bytes": 609067,
+   "v_sha256": "c63ef751b4e417e3c2d1e014f55e5f93ddc3b78629e77328a19db61f35f4ed58"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si6037.blif",
+   "blif_bytes": 22334,
+   "blif_sha256": "f489ca4da94b9df94cb65e91c378eeb744bdc78b77a496e571479f687d5a19e9",
+   "id": "si6037",
+   "v": "circuits/si6037.v",
+   "v_bytes": 54230,
+   "v_sha256": "f2258ce809ac699ba12303fd62bf82e69b2ee80e7bbe625158bd1acf104e0f70"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si6303.blif",
+   "blif_bytes": 270259,
+   "blif_sha256": "9084f80820d05790dc4bb8fb1112436e40009bba3730a3e539a464c47bc40845",
+   "id": "si6303",
+   "v": "circuits/si6303.v",
+   "v_bytes": 652991,
+   "v_sha256": "d1d999d8e1e5486bfce7a7a08025f37dbc59111f1fff84b0c60770c2a56bdf79"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si6333.blif",
+   "blif_bytes": 17559,
+   "blif_sha256": "3ecb134c4323e45ea6384e2b340284f1ab3d3796e5b8130c6fbe84b732950feb",
+   "id": "si6333",
+   "v": "circuits/si6333.v",
+   "v_bytes": 41511,
+   "v_sha256": "9678a4a68ef5d857272849d9bb3cdf502145aabcba91a8c17c7867298f9dcc4a"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si6384.blif",
+   "blif_bytes": 268257,
+   "blif_sha256": "166a6896a91dffb6dbf3bda99e642eb92decdb7e5de3ac8b225678ab631bda28",
+   "id": "si6384",
+   "v": "circuits/si6384.v",
+   "v_bytes": 650140,
+   "v_sha256": "d5101677ea958d801edbdb2be2bd6fe7d1f0dc262156e5958c491d7b6f9416a3"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si6616.blif",
+   "blif_bytes": 266040,
+   "blif_sha256": "ca90236dbcee25b3ee716675cd50e05a7d1015aa1d17cb9ca9759b39c73c32d0",
+   "id": "si6616",
+   "v": "circuits/si6616.v",
+   "v_bytes": 647976,
+   "v_sha256": "848efae25d8507e0e9c04c57ca51b23421b4e46294378c17ea632e9dc393f275"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si6775.blif",
+   "blif_bytes": 239606,
+   "blif_sha256": "a0f0287d52a9d0483e7bb6bff16a71eacb6f6f2f68a9b64465af2f09ae116a12",
+   "id": "si6775",
+   "v": "circuits/si6775.v",
+   "v_bytes": 583397,
+   "v_sha256": "c5dbeb64a629f76519d36c1fa7be14d3ed341afa6e77a7dc2fce7e436e5928c1"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si6796.blif",
+   "blif_bytes": 23036,
+   "blif_sha256": "2f5042943b2a21f796189cdcc78916de06b01fb6925979406856254cd15f3c41",
+   "id": "si6796",
+   "v": "circuits/si6796.v",
+   "v_bytes": 57309,
+   "v_sha256": "c6ba2f41bafefac9a15d8dd4985247793bcd95f24ea6c84b6dca06e56e900de5"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si6931.blif",
+   "blif_bytes": 268500,
+   "blif_sha256": "57c21fa8631773dee32b05bd37f0a49845705c5849163ecfa32abf7e14436022",
+   "id": "si6931",
+   "v": "circuits/si6931.v",
+   "v_bytes": 653037,
+   "v_sha256": "106a5b0588cc144de2a04f05384a1fef7a424d1b3a51fc6b5b28ceac6afd1669"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si6958.blif",
+   "blif_bytes": 17566,
+   "blif_sha256": "9f44600cf7182e0103bc3d7b0cfbfe6d0b6848384a1bff570a2e05b380e17647",
+   "id": "si6958",
+   "v": "circuits/si6958.v",
+   "v_bytes": 41319,
+   "v_sha256": "435aa768c2917e08e15367e1148faa313ee80afe266f84716ae3c3ccae46c44e"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si7078.blif",
+   "blif_bytes": 16654,
+   "blif_sha256": "332c65effae9061f7eeee274e7a723e4aa265542433e4bfc976e2858c721882a",
+   "id": "si7078",
+   "v": "circuits/si7078.v",
+   "v_bytes": 39248,
+   "v_sha256": "d5eb9a3adec0c1c36525d75191979f99fccd1a31ab5f51fec9e8f93c16993079"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si7264.blif",
+   "blif_bytes": 274748,
+   "blif_sha256": "7d1e21dbbc88ef342eedc2cd787e43410624a7eceb3a7d1dcd011e65b36e0578",
+   "id": "si7264",
+   "v": "circuits/si7264.v",
+   "v_bytes": 662226,
+   "v_sha256": "2dc8d54dd10ce6c78730d6685a8fa71e7a210d0e992234ef1872adc67d03cbbc"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si7303.blif",
+   "blif_bytes": 17637,
+   "blif_sha256": "9dd6ede77971b55404f0e2ff3f57fc4291c2eb234ae3e2d1414e71a8914b1503",
+   "id": "si7303",
+   "v": "circuits/si7303.v",
+   "v_bytes": 42548,
+   "v_sha256": "515df798042b4e15382ec659c001a8dfd25909000c1004c4cb7fab86acb657a9"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si7350.blif",
+   "blif_bytes": 17452,
+   "blif_sha256": "9e3d58885d0ae1c3942786994a9430efae4b081ae91ca4fd024e475966d5b73b",
+   "id": "si7350",
+   "v": "circuits/si7350.v",
+   "v_bytes": 41781,
+   "v_sha256": "7a6ec57b1e473c864c94ec8ae9e25c5b65f4dee32cfd692e84247dd081463a66"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si7482.blif",
+   "blif_bytes": 22366,
+   "blif_sha256": "59536cee685b241cc586fce04735522d058eff37bf8a8c9a4b3a79789f62da70",
+   "id": "si7482",
+   "v": "circuits/si7482.v",
+   "v_bytes": 55025,
+   "v_sha256": "6b879b8ecc5cc011251d1d0e804e7171d98534ae87e87b662b8e62d1858c43b7"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si7521.blif",
+   "blif_bytes": 23382,
+   "blif_sha256": "46a886349255272dc14dfc2f70acdca7781a91856af22384c87070ec06c45999",
+   "id": "si7521",
+   "v": "circuits/si7521.v",
+   "v_bytes": 57619,
+   "v_sha256": "a6362eb9dfc87d9fd7aaef3a9a95d6903b33a9cf678ec55c572ed5ec9cdf562e"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si7697.blif",
+   "blif_bytes": 272178,
+   "blif_sha256": "e9e476adc3b4a2222ced1bad15368bb48e7f36e135f45278992d9f5fb6aee71d",
+   "id": "si7697",
+   "v": "circuits/si7697.v",
+   "v_bytes": 656950,
+   "v_sha256": "bcc3572e396762b968e3884dc1c1142ccbc1066cde54e247b77e77d0312905c6"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si7731.blif",
+   "blif_bytes": 22310,
+   "blif_sha256": "b1591e0a83fd2cc9cd9b46768e444bcd9b8aafc7a5f40c80dc21baed3f8f111e",
+   "id": "si7731",
+   "v": "circuits/si7731.v",
+   "v_bytes": 55495,
+   "v_sha256": "0f16dcf61e8b4f81f32dda11b7ad9e101e2124b0f478123f117211183a4e8af6"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si7742.blif",
+   "blif_bytes": 242171,
+   "blif_sha256": "1679aa03387bcbde6330a19caee6f794f9fdd413904bf61d600d4c9334048536",
+   "id": "si7742",
+   "v": "circuits/si7742.v",
+   "v_bytes": 592422,
+   "v_sha256": "efe90e890706573aa394f9c2c3f0088f93601adaed2462405ceef55f50c4f581"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si7827.blif",
+   "blif_bytes": 17474,
+   "blif_sha256": "fc11b5ed7ebea89cd91bdfacc63a53855d7d632e1b19148b644ca4659218c483",
+   "id": "si7827",
+   "v": "circuits/si7827.v",
+   "v_bytes": 41968,
+   "v_sha256": "97f0ab9b5220cdef3030b6bc4fa516f3ab144f7cd15dd3466c7d6c21279708f0"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si7917.blif",
+   "blif_bytes": 22022,
+   "blif_sha256": "2577a5022260adb3bf1e60a531be39964bc2c4c301683dbfd7733b21bfe568a7",
+   "id": "si7917",
+   "v": "circuits/si7917.v",
+   "v_bytes": 53548,
+   "v_sha256": "9036117936e930007045bd3f4869e438b0ea9c39a279efde43318c7b5539c424"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si8241.blif",
+   "blif_bytes": 251916,
+   "blif_sha256": "ffaa0526cfdd5778385ef4649ad35bea286a3a6b893bafa9c5c226467fb2f117",
+   "id": "si8241",
+   "v": "circuits/si8241.v",
+   "v_bytes": 606760,
+   "v_sha256": "3a93424bcf1727b8f763f7cd6f6680203eb47ecf6fb6562c14e981b1b42790dd"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si8381.blif",
+   "blif_bytes": 268193,
+   "blif_sha256": "61d8eb312a57bf48c49130dbb96aa57709db0713f6b60bb73da3770fb08146b3",
+   "id": "si8381",
+   "v": "circuits/si8381.v",
+   "v_bytes": 653857,
+   "v_sha256": "cbeb411e2ef86b68227bf6fbc67f6178c4a7f919702b7992e7ff7c9c1e6afcba"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si8417.blif",
+   "blif_bytes": 17673,
+   "blif_sha256": "5bd71c89063cc3b0a747527606671b0375c5e044ac533e8a6d46bf7430131ee4",
+   "id": "si8417",
+   "v": "circuits/si8417.v",
+   "v_bytes": 41499,
+   "v_sha256": "2e9aea54b124743773c8dfdef998143138b45b0247832eea6291c6f37355c833"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si8524.blif",
+   "blif_bytes": 269812,
+   "blif_sha256": "2c9c0fe5f709f1d734ac28745b9f38469813558c3696b6df79563205a3c64401",
+   "id": "si8524",
+   "v": "circuits/si8524.v",
+   "v_bytes": 658278,
+   "v_sha256": "ac4605c3251235ac17eafa0971704844637a39a238461473913fe9b0c39998e0"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si8937.blif",
+   "blif_bytes": 22367,
+   "blif_sha256": "1da2c7c8d88b3e2e089746d8befb45f06a3ba788905ee6f9de09e6c74bb84f69",
+   "id": "si8937",
+   "v": "circuits/si8937.v",
+   "v_bytes": 55550,
+   "v_sha256": "d34ae5ad69aeedeec7e157f2035a3ca3092755fa14e0dbb702ce6c3c48fe37e4"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si9044.blif",
+   "blif_bytes": 267053,
+   "blif_sha256": "1600fbb935ad07864a96fea88b958cdb4d283b1105157eda4bd35b6e431d3d8b",
+   "id": "si9044",
+   "v": "circuits/si9044.v",
+   "v_bytes": 649658,
+   "v_sha256": "b457c853c56af356f2f8b521c9488cd34656ce0ea130628e500702a2f3f61441"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si9222.blif",
+   "blif_bytes": 21974,
+   "blif_sha256": "82331c8b9f9731d34ff369700e7b8aef4f904c78881d66b7f1d4896bee353a53",
+   "id": "si9222",
+   "v": "circuits/si9222.v",
+   "v_bytes": 53780,
+   "v_sha256": "3f0d81d4ef38641e8d30d6d1b9d513d600dfbc154d2e74d3152e37c05cc6b021"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si9375.blif",
+   "blif_bytes": 22362,
+   "blif_sha256": "e5d5d1ba07d428ed138afc38d1bb81fd32dd3bf1ccab08e7e46e1349f213c5af",
+   "id": "si9375",
+   "v": "circuits/si9375.v",
+   "v_bytes": 54907,
+   "v_sha256": "a27eecc0f2a778657713ce5c36d02a2c0f911bb637fec200e3b974c1fdee08cd"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si9458.blif",
+   "blif_bytes": 16958,
+   "blif_sha256": "43b3ab3a8b27723ae6709bfbb4c2be6ecfee587b18d1c47237574eb9df43ea92",
+   "id": "si9458",
+   "v": "circuits/si9458.v",
+   "v_bytes": 40656,
+   "v_sha256": "bbf5b30ef05a9024a5d43e3ae27667c9beda45510901400a608f963c1ebb20ba"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si9496.blif",
+   "blif_bytes": 267080,
+   "blif_sha256": "0a7c688643a4e711d25e2c014bfdf734fa5cebcf02a3086a4680afafa1ef5840",
+   "id": "si9496",
+   "v": "circuits/si9496.v",
+   "v_bytes": 650654,
+   "v_sha256": "e50a78901dc83c713d78b1c1804335660ccfd883cbf78a3f0e3984bd281bd0e0"
+  },
+  {
+   "base": "simple_spi",
+   "blif": "circuits/si9503.blif",
+   "blif_bytes": 22621,
+   "blif_sha256": "369455153b30e05bb06cb7baaf7e65f16d063f9ab72d856d4c2e147286427a70",
+   "id": "si9503",
+   "v": "circuits/si9503.v",
+   "v_bytes": 55253,
+   "v_sha256": "004c039c2ebf70fedbed8d43ed5fed901f420411da1025df5dfd560c48fccffa"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si9546.blif",
+   "blif_bytes": 256832,
+   "blif_sha256": "c6811ceda3ffe9abccb9f3e94396304ee438a134520556aed18d9dae00266802",
+   "id": "si9546",
+   "v": "circuits/si9546.v",
+   "v_bytes": 616949,
+   "v_sha256": "3ccb386875b28bb91011fa6dc45cc24159ce4bc4cddcbab68b9eff41e6fdfd61"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si9620.blif",
+   "blif_bytes": 17375,
+   "blif_sha256": "9d0ef95d38d34b2d18d221d948b5d1556c65c55a8475cb13c0f139aed71b28d6",
+   "id": "si9620",
+   "v": "circuits/si9620.v",
+   "v_bytes": 41688,
+   "v_sha256": "4507a6201e443a422f87a2ab07e0c6bb36f2a92e879b8babaa5e081005867faa"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si9659.blif",
+   "blif_bytes": 16655,
+   "blif_sha256": "3416f7c9dc3e9d2decb67c198e0b97ca37aecafb52771be170cacd5c30e770dc",
+   "id": "si9659",
+   "v": "circuits/si9659.v",
+   "v_bytes": 39145,
+   "v_sha256": "bf34fde81ccd765a9996176cc355fc5ed1f31b3b1218d26c9243267f94b7c810"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si9896.blif",
+   "blif_bytes": 267244,
+   "blif_sha256": "395a3b517a6feb6ec2f7904895a0ae08b8139e1e567993943e87fc9a29745237",
+   "id": "si9896",
+   "v": "circuits/si9896.v",
+   "v_bytes": 650770,
+   "v_sha256": "e8eb90c813fbcaa118b5d94dc431369881ae4fcb4db1bec9b69cb187d415298a"
+  },
+  {
+   "base": "mmuart",
+   "blif": "circuits/si9936.blif",
+   "blif_bytes": 17123,
+   "blif_sha256": "4e6bd9c009693de1cc783fd5b204bb9e30a45aaaf1ca9bd214167c3033a0bbb4",
+   "id": "si9936",
+   "v": "circuits/si9936.v",
+   "v_bytes": 40984,
+   "v_sha256": "a170b3317e775efdd9b2a80f3b044989f607639d7cbfd4189c11132ba74ec91a"
+  },
+  {
+   "base": "verilog_cordic_core",
+   "blif": "circuits/si9947.blif",
+   "blif_bytes": 270805,
+   "blif_sha256": "41f22589f5f54b081c226fe2cc9a1ace9450e1fa0ae542820b767819ea20a1af",
+   "id": "si9947",
+   "v": "circuits/si9947.v",
+   "v_bytes": 653757,
+   "v_sha256": "56ef14fc0dbbdcc22b2552cadd207a6961a2f5bd7ab61325e6ae04fa5c62a0a5"
+  }
+ ],
+ "family": "silicon",
+ "form": "sky130_fd_sc_hd structural Verilog (.v) plus gates-as-names BLIF",
+ "labels": "answer_key/ (separate; a detector must not read it)",
+ "note": "Seeker-Si is a NEW set. Its bases are OpenCores designs mapped to sky130_fd_sc_hd standard cells, not the benchmarks of Seeker comb/seq/proc; do not compare per base, per form or by AUROC with those sets.",
+ "version": "2.0-rc1"
+}

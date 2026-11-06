@@ -17,11 +17,19 @@ from pathlib import Path
 MODEL = "top"
 LIB = Path(__file__).resolve().parents[1] / "data" / "andornot.o3lib"
 LIB_NAME = "andornot"
-KINDS = ("k4", "k6", "gates")
+SKY_NAME = "sky130hd"  # the library name inside lib/sky130hd.o3lib (silicon flow's LIB_NAME)
+KINDS = ("k4", "k6", "gates", "silicon")
 # ABC logic-optimisation operations (every one valid on combinational and sequential networks).
 OPS = ("balance", "balance -l", "rewrite", "rewrite -z", "rewrite -l", "refactor", "refactor -z",
        "refactor -l", "resub -K 6", "resub -K 8 -N 2", "resub -K 10 -z", "resub -K 12", "dc2",
        "dc2 -l", "drw", "drw -z", "drf", "ifraig")
+
+
+def sky130_lib() -> Path:
+    """lib/sky130hd.o3lib of the Odin III checkout ODIN3_ROOT (the silicon flow's own library)."""
+    root = os.environ.get("ODIN3_ROOT")
+    base = Path(root) if root else Path(os.environ["ODIN3_LIB"]).resolve().parents[2]
+    return base / "lib" / "sky130hd.o3lib"
 
 
 def random_script(rng: random.Random, kind: str) -> str:
@@ -30,7 +38,7 @@ def random_script(rng: random.Random, kind: str) -> str:
     lines = ["strash", *ops]
     if rng.random() < 0.7:
         lines.append("dch -f")
-    if kind == "gates":
+    if kind in ("gates", "silicon"):
         lines.append(rng.choice(("map -a", "map")))
     else:
         lines.append("if -K {K}")
@@ -229,7 +237,12 @@ def map_with_odin(src: Path, kind: str, script: str, work: Path, tag: str) -> st
     out = work / f"{tag}.odin.blif"
     sfile.write_text(script, encoding="utf-8")
     with Design() as design:
-        if kind == "gates":
+        if kind == "silicon":
+            lib = sky130_lib()
+            design.run_script(f"read_techlib {lib}; read_blif {src}; "
+                              f"abc --gates {SKY_NAME} --script {sfile}; dfflibmap {SKY_NAME}; "
+                              f"write_blif --gates-as-names {out}")
+        elif kind == "gates":
             design.run_script(f"read_techlib {LIB}; read_blif {src}; "
                               f"abc --gates {LIB_NAME} --script {sfile}; "
                               f"write_blif --gates-as-names {out}")
