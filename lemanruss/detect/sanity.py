@@ -66,7 +66,7 @@ class Sanity(Detector):
             d = f.path.parent
             if d not in self.index:
                 counts: dict[str, int] = {}
-                for p in sorted(d.glob("*.blif.gz")):
+                for p in sorted(d.glob("*.blif*")):
                     h = cached("blifhash", CircuitFile(p.name.split(".")[0], p), blif_hash)
                     counts[h] = counts.get(h, 0) + 1
                 self.index[d] = counts
