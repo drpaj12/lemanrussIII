@@ -291,7 +291,7 @@ def shipped_silence_ok(silence: dict[str, dict[str, bool]]) -> bool:
 
 def build_one_circuit(
     circuit_id: str, base: str, rng: random.Random, used_words: set[int], odin3_bin: Path,
-    work: Path, forced: tuple[list[str], list[int]] | None = None,
+    work: Path, forced: tuple[list[str], list[int]] | None = None, functional_only: bool = False,
 ) -> BuiltCircuit:
     """Builds one logical circuit (clean + its infected twin, 1-3 independent Trojans) at the
     RTL/gate level, runs every rc1 functional gate once (FF equality, each Trojan's witness,
@@ -301,7 +301,11 @@ def build_one_circuit(
     mapped to forms this function returns -- the caller packages the matching infected gate-
     level BLIF the same way, outside this function, when (and only when) every gate above
     passes (a circuit failing any gate is dropped and redrawn, spec section 5).
-    `forced` = (kinds, magic words) replays one fixed draw (regression tests, repros)."""
+    `forced` = (kinds, magic words) replays one fixed draw (regression tests, repros).
+    `functional_only` returns right after the functional gates (no form mapping, no release-gate
+    equivalence proofs; `gate_pass` then covers the functional gates only). The release gate's
+    ABC miters dominate the wall time (about 90 of 110 s for a darkriscv circuit), so draw
+    regression tests that only need the functional gates set it."""
     if forced is not None:
         kinds, magic_words = list(forced[0]), list(forced[1])
     else:
@@ -367,6 +371,8 @@ def build_one_circuit(
         )
         if not result.gate_pass:
             result.error = "one or more functional gates failed (see fields)"
+            return result
+        if functional_only:
             return result
 
         hints: dict[str, tuple[str, dict[str, str]]] = {}  # form key -> (mapped text, renames)
