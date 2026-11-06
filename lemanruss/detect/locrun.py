@@ -54,6 +54,7 @@ def run(det_name: str, rel: Any, regions: dict[str, Any], out: Path,
         if f.is_file():
             continue
         det = make_detector(det_name)
+        det.prepare(views(rel.records))
         det.fit(views(sp.train), [int(r.infected) for r in sp.train], views(sp.val),
                 [int(r.infected) for r in sp.val], seed)
         vs = det.score(views(sp.val))
