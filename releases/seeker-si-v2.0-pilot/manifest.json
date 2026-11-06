@@ -1,0 +1,48 @@
+{
+ "bases": [
+  "mmuart"
+ ],
+ "circuits": [
+  {
+   "bytes": 17381,
+   "file": "circuits/si0005.blif",
+   "id": "si0005",
+   "sha256": "396998a3f551cc8a92ffe064b93530e4a475c08d5f4021c7c61463144f876b2e"
+  },
+  {
+   "bytes": 41953,
+   "file": "circuits/si0005.v",
+   "id": "si0005",
+   "sha256": "3b6c9d967494daf27755cd1c512d85f629e78af657114754700a7d6b59170df8"
+  },
+  {
+   "bytes": 17598,
+   "file": "circuits/si0055.blif",
+   "id": "si0055",
+   "sha256": "fbf87170a011fecf6e770382a70a068e1a37b8c66e8c28a05081a4c8fbf93703"
+  },
+  {
+   "bytes": 42342,
+   "file": "circuits/si0055.v",
+   "id": "si0055",
+   "sha256": "1244ee0e4afc8c77660af0f2b417741ca80da1e9de1efbd89dcdf5c68aa18931"
+  },
+  {
+   "bytes": 16870,
+   "file": "circuits/si0202.blif",
+   "id": "si0202",
+   "sha256": "556e996d292d746573fda2ffc21b7a8f9c0bf5938441b258be45464cb6136003"
+  },
+  {
+   "bytes": 40235,
+   "file": "circuits/si0202.v",
+   "id": "si0202",
+   "sha256": "97f0bafa0b39deb765dae8cda5c0212f24866d74b6b99e1d2252891633bb4f9c"
+  }
+ ],
+ "family": "silicon",
+ "form": "sky130_fd_sc_hd structural Verilog (.v) plus gates-as-names BLIF",
+ "labels": "answer_key/ (separate; a detector must not read it)",
+ "note": "Seeker-Si is a NEW set. Its bases are OpenCores designs mapped to sky130_fd_sc_hd standard cells, not the benchmarks of Seeker comb/seq/proc; do not compare per base, per form or by AUROC with those sets.",
+ "version": "2.0-pilot"
+}
