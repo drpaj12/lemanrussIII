@@ -22,6 +22,7 @@ from __future__ import annotations
 import random
 from pathlib import Path
 
+from lemanruss.htl import mips16
 from lemanruss.htl.rv32i import (
     decode_shift_right,
     encode_addi,
@@ -54,6 +55,8 @@ def alu_magic_word(base: str, rng: random.Random, exclude: set[int]) -> int:
     """The magic word of an `alu`-kind Trojan: a shift-right word on mcu and darkriscv (the
     comparator sees the executing instruction); any legal ADDI word on picorv32 (module note
     below: its watched register holds the instruction AFTER the executing shift)."""
+    if base == "mips_16":
+        return mips16.random_magic_word(rng, exclude)
     if base == "picorv32":
         return random_magic_word(rng, exclude)
     return random_shift_right_word(rng, exclude)
@@ -78,6 +81,8 @@ def _pico_alu_witness(word: int) -> list[int]:
 def alu_witness_words(base: str, word: int) -> list[int]:
     """Program that executes the `alu` Trojan's shift-right once with defined operands and stores
     its destination register to the base's observable address."""
+    if base == "mips_16":
+        return mips16.alu_witness_words(word)
     if base == "picorv32":
         return _pico_alu_witness(word)
     sh = decode_shift_right(word)
@@ -97,9 +102,11 @@ def alu_witness_words(base: str, word: int) -> list[int]:
     return prog
 
 
-def neutral_shift_word(word: int) -> int:
+def neutral_shift_word(word: int, base: str = "") -> int:
     """A word that is not `word` but has the same kind: bit 20 flipped (shamt/rs2 bit 0 of a
-    shift-right, imm bit 0 of an ADDI)."""
+    shift-right, imm bit 0 of an ADDI); mips_16: bit 0 flipped."""
+    if base == "mips_16":
+        return mips16.neutral_word(word)
     return word ^ (1 << 20)
 
 
@@ -135,6 +142,8 @@ def shipped_words(base: str, upstream: Path) -> set[int]:
     base's own checkout). mcu: four byte-plane files `<k><name>.vmh` per program; darkriscv: the
     word-per-line `src/darksocv.mem`; picorv32: no shipped program image in the checkout."""
     words: set[int] = set()
+    if base == "mips_16":
+        return mips16.shipped_words(upstream)
     if base == "mcu":
         img = upstream / "quartus_project_revert_timer"
         for p0 in sorted(img.glob("0*.vmh")):
@@ -153,6 +162,8 @@ def shipped_words(base: str, upstream: Path) -> set[int]:
 
 def forbidden_words(base: str, upstream: Path) -> set[int]:
     """The generator's rejection set for `base` (module docstring)."""
+    if base == "mips_16":
+        return mips16.forbidden_words(upstream)
     return scaffolding_words() | shipped_words(base, upstream)
 
 

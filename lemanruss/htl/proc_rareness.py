@@ -90,9 +90,14 @@ class ProcRareness:
         }
 
 
-def magic_match_probability(n_words: int) -> float:
-    """P(a uniformly random 32-bit value, or n_words of them in order, matches): 2**-(32*n)."""
-    return 2.0 ** -(32 * n_words)
+def magic_match_probability(n_words: int, word_bits: int = 32) -> float:
+    """P(a uniformly random `word_bits`-bit value, or n_words of them in order, matches):
+    2**-(word_bits*n). RV32I bases have 32-bit words, mips_16 16-bit words."""
+    return 2.0 ** -(word_bits * n_words)
+
+
+def word_bits(base: str) -> int:
+    return 16 if base == "mips_16" else 32
 
 
 def scoap_of_trigger(

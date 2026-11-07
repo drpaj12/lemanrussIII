@@ -12,7 +12,7 @@ checkout's `plugins/python`). No LLM calls anywhere in this repo.
 ## Setup
 
     python3 -m venv .venv && .venv/bin/pip install ruff mypy cffi
-    export ODIN3_ROOT=<odin3 checkout> ODIN3_LIB=$ODIN3_ROOT/build/release/libodin3.so
+    export ODIN3_ROOT=<odin3 checkout> ODIN3_LIB=$ODIN3_ROOT/build/rel-main3/libodin3.so
     export PYTHONPATH=$ODIN3_ROOT/plugins/python
     export MYPYPATH=$ODIN3_ROOT/plugins/python  # else mypy --strict treats odin3 as an untyped install
 

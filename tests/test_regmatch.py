@@ -39,8 +39,8 @@ def traced(text: str, seed: int) -> tuple[str, dict[str, str], str]:
 
 @unittest.skipUnless(
     ROOT and Path(ROOT, "tools/equiv-check/equiv-check").is_file()
-    and Path(ROOT, "build/release/third_party/abc/abc").is_file(),
-    "needs ODIN3_ROOT with tools/equiv-check and a built ABC (build/release)")
+    and Path(ROOT, "build/rel-main3/third_party/abc/abc").is_file(),
+    "needs ODIN3_ROOT with tools/equiv-check and a built ABC (build/rel-main3)")
 class RegMatchTest(unittest.TestCase):
     def test_chain_proves_renamed_and_shuffled(self) -> None:
         form, ren, mapped = traced(SOURCE, 3)
@@ -105,8 +105,8 @@ INIT_A = ".model m\n.inputs a clk\n.outputs y\n.latch a q re clk {init}\n.names 
 
 @unittest.skipUnless(
     ROOT and Path(ROOT, "tools/equiv-check/equiv-check").is_file()
-    and Path(ROOT, "build/release/third_party/abc/abc").is_file(),
-    "needs ODIN3_ROOT with tools/equiv-check and a built ABC (build/release)")
+    and Path(ROOT, "build/rel-main3/third_party/abc/abc").is_file(),
+    "needs ODIN3_ROOT with tools/equiv-check and a built ABC (build/rel-main3)")
 class ScorrTest(unittest.TestCase):
     def test_merged_registers_are_proved_by_signal_correspondence(self) -> None:
         from lemanruss.htl.regmatch import cut_equivalent, scorr_equivalent

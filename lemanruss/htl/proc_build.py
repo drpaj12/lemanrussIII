@@ -22,6 +22,7 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from lemanruss.htl import mips16
 from lemanruss.htl.bitsim import latches_of
 from lemanruss.htl.blif_text import parse_single_model
 from lemanruss.htl.dark_ram_blackbox import dark_odin_files
@@ -67,8 +68,9 @@ from lemanruss.htl.proc_witness import (
 )
 from lemanruss.htl.rv32i import random_magic_word
 
-BASES = ("mcu", "picorv32", "darkriscv")  # smallest-to-biggest by black-boxed FF count (Peter's
-# standing smaller-to-bigger rule): mcu 1310, picorv32 1615, darkriscv 2034
+BASES = ("mips_16", "mcu", "picorv32", "darkriscv")  # smallest-to-biggest by black-boxed FF
+# count (Peter's standing smaller-to-bigger rule): mips_16 268, mcu 1310, picorv32 1615,
+# darkriscv 2034
 # (docs/results-round10.md section 4.1, results-round11.md section 3).
 PAYLOAD_KINDS = ("reset", "stall", "alu")
 FORMS = ("gates", "k4", "k6")
@@ -97,6 +99,7 @@ def draw_trojans(
     for kind in kinds:
         # per-base alu magic word: see proc_witness.alu_magic_word; reset/stall: any legal ADDI.
         w = (alu_magic_word(base, rng, used_words) if kind == "alu"
+             else mips16.random_magic_word(rng, used_words) if base == "mips_16"
              else random_magic_word(rng, used_words))
         used_words.add(w)
         words.append(w)
@@ -160,16 +163,22 @@ def _prepare_and_patch(
             p = inf / rel
             patched, _ = insert_picorv32_kinded_multitrojan(p.read_text(), magic_words, kinds)
             p.write_text(patched)
+    elif base == "mips_16":
+        files = mips16.prepare_mips16(MIPS_UPSTREAM, clean)
+        mips16.prepare_mips16(MIPS_UPSTREAM, inf, magic_words=magic_words, kinds=kinds)
     else:
         raise ValueError(f"unknown base {base!r}")
     return clean, inf, files
 
 
-_UPSTREAM = {"mcu": MCU_UPSTREAM, "darkriscv": DARK_UPSTREAM, "picorv32": PICO_UPSTREAM}
+MIPS_UPSTREAM = PICO_UPSTREAM.parent / "opencores" / "mips_16" / "rtl"
+_UPSTREAM = {"mcu": MCU_UPSTREAM, "darkriscv": DARK_UPSTREAM, "picorv32": PICO_UPSTREAM,
+             "mips_16": MIPS_UPSTREAM}
 
 
 def _odin_top(base: str) -> str:
-    return {"darkriscv": "darksocv", "mcu": "single_cycle_BRAM_top", "picorv32": "picorv32"}[base]
+    return {"darkriscv": "darksocv", "mcu": "single_cycle_BRAM_top", "picorv32": "picorv32",
+            "mips_16": mips16.TOP}[base]
 
 
 def _lower(base: str, cwd: Path, files: list[str], odin3_bin: Path, out: Path) -> None:
@@ -177,6 +186,8 @@ def _lower(base: str, cwd: Path, files: list[str], odin3_bin: Path, out: Path) -
         lower_gates_as_names(odin3_bin, "darksocv", dark_odin_files(files), cwd / "rtl", out)
     elif base == "mcu":
         lower_gates_as_names(odin3_bin, "single_cycle_BRAM_top", mcu_odin_files(files), cwd, out)
+    elif base == "mips_16":
+        lower_gates_as_names(odin3_bin, mips16.TOP, files, cwd, out)
     else:
         lower_gates_as_names(odin3_bin, "picorv32", files, cwd, out)
 
@@ -186,6 +197,8 @@ def _witness_words(base: str, magic_words: list[int]) -> list[int]:
         return dark_witness_words(magic_words)
     if base == "mcu":
         return mcu_witness_words(magic_words)
+    if base == "mips_16":
+        return mips16.witness_words(magic_words)
     return pico_witness_words(magic_words)
 
 
@@ -194,6 +207,8 @@ def _write_program(base: str, out: Path, words: list[int]) -> None:
         write_dark_program(out, words)
     elif base == "mcu":
         write_mcu_program(out, words, "blink")
+    elif base == "mips_16":
+        mips16.write_program(out, words)
     else:
         write_pico_program(out, words)
 
@@ -205,12 +220,14 @@ def _run_once(
         return run_dark_once(out, files, odin3_bin, cycles, tag)
     if base == "mcu":
         return run_mcu_once(out, files, odin3_bin, cycles, tag)
+    if base == "mips_16":
+        return mips16.run_once(out, files, odin3_bin, cycles, tag)
     return run_picorv32_once(out, files, odin3_bin, cycles, tag)
 
 
 def _witness_cycles(base: str) -> int:
     return {"darkriscv": DARK_WITNESS_CYCLES, "mcu": MCU_WITNESS_CYCLES,
-            "picorv32": PICO_WITNESS_CYCLES}[base]
+            "picorv32": PICO_WITNESS_CYCLES, "mips_16": mips16.WITNESS_CYCLES}[base]
 
 
 DARK_SHIPPED_CYCLES = 4000  # proc_pilot.run_dark_pilot's own "prebuilt-firmware" stealth check
@@ -226,6 +243,8 @@ def shipped_programs(base: str) -> tuple[str, ...]:
         return MCU_SHIPPED
     if base == "darkriscv":
         return ("firmware",)
+    if base == "mips_16":
+        return mips16.SHIPPED
     return ()
 
 
@@ -260,6 +279,16 @@ def _run_shipped_one(
             p.write_text(patched)
         c = run_dark_once(s_clean, files, odin3_bin, DARK_SHIPPED_CYCLES, "ship")
         i = run_dark_once(s_inf, files, odin3_bin, DARK_SHIPPED_CYCLES, "ship")
+    elif base == "mips_16":
+        words = mips16.read_prog(MIPS_UPSTREAM.parent / "bench" / "mips_16_core_top"
+                                 / f"{prog}.prog")
+        files = mips16.prepare_mips16(MIPS_UPSTREAM, s_clean)
+        mips16.prepare_mips16(MIPS_UPSTREAM, s_inf, magic_words=magic_words, kinds=kinds)
+        for d in (s_clean, s_inf):
+            mips16.write_program(d, words)
+        cyc = mips16.SHIPPED_CYCLES[prog]
+        c = mips16.run_once(s_clean, files, odin3_bin, cyc, "ship")
+        i = mips16.run_once(s_inf, files, odin3_bin, cyc, "ship")
     else:
         raise ValueError(f"{base!r} has no shipped program {prog!r}")
     return {
@@ -353,7 +382,7 @@ def build_one_circuit(
         for word, kind in zip(magic_words, kinds, strict=True):
             if kind != "alu":
                 continue
-            shift = alu_witness_words(base, neutral_shift_word(word))
+            shift = alu_witness_words(base, neutral_shift_word(word, base))
             _write_program(base, inf, shift)
             _write_program(base, clean, shift)
             c = _run_once(base, clean, files, odin3_bin, cycles, "w-neutral-shift")

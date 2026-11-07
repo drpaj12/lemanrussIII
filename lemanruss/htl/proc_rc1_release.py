@@ -26,7 +26,7 @@ from pathlib import Path
 
 from lemanruss.htl.proc_build import _witness_words
 from lemanruss.htl.proc_gate import GateError, gate_problems, structural_problems
-from lemanruss.htl.proc_rareness import magic_match_probability
+from lemanruss.htl.proc_rareness import magic_match_probability, word_bits
 from lemanruss.htl.proc_release import LEAK_TOKENS, NAME_VOCAB, check_name_vocabulary
 from lemanruss.htl.proc_witness import alu_witness_words
 from lemanruss.htl.release import gz_bytes, read_blif_gz, scrub_group, sha256_file, write_sha256sums
@@ -99,7 +99,7 @@ def package_proc_rc1(
     for i, lc in enumerate(circuits):
         catalogue[lc.logical_id] = {
             "base": lc.base, "kinds": lc.kinds,
-            "magic_words": [f"0x{w:08x}" for w in lc.magic_words],
+            "magic_words": [f"0x{w:0{word_bits(lc.base) // 4}x}" for w in lc.magic_words],
             "ids": {f: ids[(f, i)] for f in FORM_NAMES.values()},
             "infected_in": [f for f in FORM_NAMES.values() if i in infected_idx[f]],
         }
@@ -123,9 +123,11 @@ def package_proc_rc1(
                 for k, (kind, w) in enumerate(zip(lc.kinds, lc.magic_words, strict=True)):
                     prog = (alu_witness_words(lc.base, w) if kind == "alu"
                             else _witness_words(lc.base, [w]))
+                    hexw = word_bits(lc.base) // 4
                     (wdir / f"t{k}.words.gz").write_bytes(
-                        gz_bytes("\n".join(f"{x:08x}" for x in prog) + "\n"))
-                rareness[cid] = {"p_match_per_trojan": magic_match_probability(1),
+                        gz_bytes("\n".join(f"{x:0{hexw}x}" for x in prog) + "\n"))
+                rareness[cid] = {"p_match_per_trojan":
+                                 magic_match_probability(1, word_bits(lc.base)),
                                  "n_trojans": len(lc.kinds), "kinds": lc.kinds,
                                  "scoap": "not measured in rc1"}
             # release gate (rc2): the file as released is valid, and equivalent to its pre-scrub
@@ -209,7 +211,9 @@ def datasheet(
     ]
     lic = {"mcu": ("MIT (Arduino-on-RISC-V)", 1310), "picorv32": ("ISC (YosysHQ picorv32, "
            "default parameters: no multiplier, divider or IRQ)", 1615),
-           "darkriscv": ("BSD 3-Clause (darkriscv)", 2034)}
+           "darkriscv": ("BSD 3-Clause (darkriscv)", 2034),
+           "mips_16": ("OpenCores mips_16 (16-bit, 5-stage; x don't-cares resolved to 0, "
+                       "memories black-boxed)", 0)}
     for b in sorted(lic):
         n = sum(1 for c in circuits if c.base == b)
         lines.append(f"| {b} | {lic[b][0]} | {lic[b][1]} | {n} |")

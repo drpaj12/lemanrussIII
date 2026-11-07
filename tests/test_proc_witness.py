@@ -33,7 +33,7 @@ MCU_UP = WS / "external" / "Arduino-on-RISC-V"
 DARK_UP = WS / "external" / "darkriscv"
 PICO_UP = WS / "external" / "picorv32"
 SLOW = os.environ.get("LEMANRUSS_SLOW") == "1"
-ODIN_BIN = Path(os.environ.get("ODIN3_BIN", str(WS / "odin3" / "build" / "release" / "odin3")))
+ODIN_BIN = Path(os.environ.get("ODIN3_BIN", str(WS / "odin3" / "build" / "rel-main3" / "odin3")))
 
 
 class TestShiftRightCodec(unittest.TestCase):
