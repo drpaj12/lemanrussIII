@@ -159,6 +159,26 @@ Applied per silicon circuit before it is written; any failure redraws (infected)
 Iverilog on the cell Verilog is a recorded check (twin-vs-twin trace equality where a testbench exists),
 not a gate, as in rc1 (flip-flops without reset give x).
 
+### 3a. Buffer-free silicon netlists (rule added 2026-11-07 after the first Seq verification)
+
+The first Seq silicon build failed the style check `g_style`: infected circuits held more `buf`
+cells than clean ones (z = 9 over 36 bases, difference 0.105; best single feature AUROC 0.585, under
+the bound but a count leak). Source: cut-and-stitch. The pieces of a circuit are mapped separately
+and joined, and the mapper puts a buffer where a boundary net is both a port of a piece and an input
+elsewhere; plain mapping of a whole circuit gave 0 buffers in 12 of 12 trials (6 scripts, golden and
+infected pre-circuit). How many cuts and how many boundary nets a circuit has differs by draw, hence
+a label-correlated count. Rule, applied after every silicon mapping step and after stitching, to
+every family and both labels (`obfuscate.strip_buffers`): a non-inverting buffer cell is removed by
+merging its nets (its output is replaced by its input; if its output is a port and its input an
+internal net, that net is renamed to the port name). Port names never change. A buffer that joins two
+ports, or an input port to an output port, stays, because a port cannot alias another port. Equivalence
+of every circuit to its source is proven after the rule by the same gate. After the change: Comb and
+Seq pass all verification checks including `g_style` and contain no internal buffers; the Proc cores
+keep only port-joining buffers that belong to the core interface and are the same for clean and
+infected circuits of a base (picorv32: 103 per circuit in both labels; mcu and mips_16: none;
+darkriscv: one input-to-output feedthrough per circuit and 0.4 to 0.6 port-to-port per circuit,
+0.57 clean against 0.37 infected).
+
 ## 4. Answer key
 
 Same files and schema as the family (`labels.json`, `sets`, Trojan catalogue, `pre/<id>.blif.gz`,
