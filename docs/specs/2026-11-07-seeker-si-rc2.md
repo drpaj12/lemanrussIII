@@ -103,6 +103,38 @@ dfflibmap sky130hd; write_blif --gates-as-names`; no Yosys; Odin III is `build/r
 - `lemanruss/htl/si_build.py`, `si_set.py` and `detect/sirelease.py` (rc1) stay as the record of rc1
   and are not extended. `si_cells.py` and the `silicon` kind of `obfuscate.py` are reused.
 
+### 2.4 As built (amendments of 2026-11-07, after the long-build go)
+
+- Comb and Seq: `LEMANRUSS_SETS=S` builds the silicon set alone (`n200.active_sets`); the golden of
+  each base is also mapped to cells (`si_golden.silicon_goldens`) so a release holds one form. A
+  base whose golden Odin III cannot map (four tiny VerilogEval bases that already fail to parse) is
+  dropped from the manifest and listed in `dropped_bases`.
+- Proc: the silicon release is its own release (`seeker-si-proc-v2.0-rc2`, 133 circuits, silicon
+  form only, new seeds). The gates/lut4/lut6 forms are not rebuilt (this amends section 2.2, which
+  counted 532 files).
+- Proc gate on the silicon netlists themselves (controller condition): every Trojan must fire and the
+  neutral stimuli (neutral program, neutral shift) must stay silent on the silicon BLIF simulated by
+  Odin III (clean twin against infected twin, their own initial-value semantics). A circuit that fails
+  is rejected, counted and redrawn (`n_rejected` in the build metadata). Shipped-program silence is
+  not repeated on the silicon netlist.
+- Equivalence of a silicon circuit to its source: strict first. `dfxtp_1` carries no initial value,
+  so when the strict check fails on equivalence, the same check runs against the source with every
+  `.latch` initial value reset (read as 0); clean and infected twins use the same procedure, each
+  against its own source, and the gate used is recorded per circuit (`answer_key/build_meta.json`).
+  Result: mips_16, mcu and picorv32 strict for every circuit; darkriscv init-reset for every circuit
+  (its source has 815 flip-flops with initial value 0, 22 with 1 and 1,195 unknown).
+- Place and route (`si_pnr_set`): about 10 % of each base, label-stratified, every Proc base,
+  smallest first; flow = `odin3/tools/silicon/openroad_flow.tcl` unchanged (utilisation 25 %), 30
+  minute cap, one retry at 18 %, and a stall rule: a log silent for 5 minutes at DRT-0179 `Init gr pin
+  query` is a hang and is recorded as a flow limit (`stall`) with the cell count. Diagnosis of the
+  stalls (one stalled Comb circuit, 1,078 cells): a larger die (utilisation 10), looser IO pin
+  spacing, default global-route iterations and a global-routing layer adjustment all still stall;
+  routing from metal 2 upward fails (GRT-0118 or DRT-0155). No flow parameter changed. IO pin density
+  does not separate stalled from finished circuits.
+- Detectors: Proc as rc3 (`procrun`, 50 epochs, no training cap, seeds 0, 1, 2, range check);
+  Comb and Seq as the localisation runs of PR #3 (12 epochs, batch 32, training cap 1,500,
+  `locrun` for the localising detectors and `detect.run --splits base` for the others).
+
 ## 3. The gate set for the new form
 
 Applied per silicon circuit before it is written; any failure redraws (infected) or stops (clean).
