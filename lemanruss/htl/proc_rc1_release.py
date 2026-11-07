@@ -213,18 +213,24 @@ def datasheet(
            "default parameters: no multiplier, divider or IRQ)", 1615),
            "darkriscv": ("BSD 3-Clause (darkriscv)", 2034),
            "mips_16": ("OpenCores mips_16 (16-bit, 5-stage; x don't-cares resolved to 0, "
-                       "memories black-boxed)", 0)}
+                       "memories black-boxed)", 268)}
     for b in sorted(lic):
         n = sum(1 for c in circuits if c.base == b)
         lines.append(f"| {b} | {lic[b][0]} | {lic[b][1]} | {n} |")
     lines += [
-        "", "Memories are black-box hard blocks in all three forms, so flip-flop counts are the "
+        "", "mips_16 is the OpenCores 16-bit, 5-stage core with its do-not-care values resolved "
+        "to 0 (`ALU_NC`, the decoder `1'bx` values and the first ALU case arm that matched every "
+        "command), so that four-state and two-state simulators agree; its ALU Trojan's magic "
+        "word is the instruction after a shift-right.", "",
+        "Memories are black-box hard blocks in all three forms, so flip-flop counts are the "
         "cores' own (not per-bit RAM latches). Infected and clean twins have equal flip-flop "
         "counts (hard gate, per circuit).", "",
         "## Triggers and payloads", "",
         "Trigger: a 32-bit magic word on the core's instruction register (mcu `instruction`, "
         "single cycle; darkriscv `XIDATA`, its registered instruction; picorv32 "
-        "`next_insn_opcode`). Payload kinds: reset DoS, stall DoS, and ALU data corruption "
+        "`next_insn_opcode`; mips_16 `instruction_reg`, a 16-bit word, so a mips_16 Trojan's "
+        "random-match probability is 2^-16 per instruction, not 2^-32). Payload kinds: reset "
+        "DoS, stall DoS, and ALU data corruption "
         "(flip the LSB of a shift-right result). RV32I has no rotate instruction. Each Trojan "
         "has its own random legal word; words equal to a word of a shipped program image or of "
         "a witness scaffold are never drawn. The activation programs are in the answer key only.",
