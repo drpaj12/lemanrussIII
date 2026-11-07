@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import random
 import shutil
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -67,6 +68,7 @@ from lemanruss.htl.proc_witness import (
     neutral_shift_word,
 )
 from lemanruss.htl.rv32i import random_magic_word
+from lemanruss.htl.si_gates import neutral_init
 
 BASES = ("mips_16", "mcu", "picorv32", "darkriscv")  # smallest-to-biggest by black-boxed FF
 # count (Peter's standing smaller-to-bigger rule): mips_16 268, mcu 1310, picorv32 1615,
@@ -74,6 +76,7 @@ BASES = ("mips_16", "mcu", "picorv32", "darkriscv")  # smallest-to-biggest by bl
 # (docs/results-round10.md section 4.1, results-round11.md section 3).
 PAYLOAD_KINDS = ("reset", "stall", "alu")
 FORMS = ("gates", "k4", "k6")
+ALL_FORMS = (*FORMS, "si")  # "si" = silicon (sky130_fd_sc_hd), Seeker-Si rc2 (spec 2026-11-07)
 
 # spec docs/specs/2026-11-01-seeker-n200-design.md section 3's own Trojan-count prior, reused
 # verbatim for Proc (docs/specs/2026-11-03-seeker-proc-rc1.md section 2).
@@ -132,6 +135,7 @@ class BuiltCircuit:
     gate_engines: dict[str, str] = field(default_factory=dict)  # form key -> equivalence engine
     gate_pass: bool = False
     error: str = ""
+    form_seconds: float = 0.0  # mapping plus release gate of the forms (wall)
 
 
 def _prepare_and_patch(
@@ -321,6 +325,7 @@ def shipped_silence_ok(silence: dict[str, dict[str, bool]]) -> bool:
 def build_one_circuit(
     circuit_id: str, base: str, rng: random.Random, used_words: set[int], odin3_bin: Path,
     work: Path, forced: tuple[list[str], list[int]] | None = None, functional_only: bool = False,
+    forms: tuple[str, ...] = FORMS,
 ) -> BuiltCircuit:
     """Builds one logical circuit (clean + its infected twin, 1-3 independent Trojans) at the
     RTL/gate level, runs every rc1 functional gate once (FF equality, each Trojan's witness,
@@ -405,8 +410,10 @@ def build_one_circuit(
             return result
 
         hints: dict[str, tuple[str, dict[str, str]]] = {}  # form key -> (mapped text, renames)
-        for form in FORMS:
-            out = obfuscate_traced(clean_nl, form, rng, work, f"{circuit_id}-clean-{form}")
+        t_forms = time.monotonic()
+        for form in forms:
+            out = obfuscate_traced(clean_nl, "silicon" if form == "si" else form, rng, work,
+                                   f"{circuit_id}-clean-{form}")
             if isinstance(out, str):
                 result.form_errors[form] = out
                 continue
@@ -415,8 +422,9 @@ def build_one_circuit(
             result.form_script[form] = script
             hints[f"{form}-clean"] = (mapped, renames)
         inf_form_text: dict[str, str] = {}
-        for form in FORMS:
-            out = obfuscate_traced(inf_nl, form, rng, work, f"{circuit_id}-inf-{form}")
+        for form in forms:
+            out = obfuscate_traced(inf_nl, "silicon" if form == "si" else form, rng, work,
+                                   f"{circuit_id}-inf-{form}")
             if isinstance(out, str):
                 result.form_errors[f"infected-{form}"] = out
                 continue
@@ -432,10 +440,19 @@ def build_one_circuit(
             problems += [f"{key}.nl: {x}" for x in structural_problems(nl.read_text())]
         for key, ftext in result.form_text.items():
             ref = clean_nl if key.endswith("-clean") else inf_nl
+            ref_text = ref.read_text()
+            if key.startswith("si-"):  # dfxtp_1 has no initial value (spec section 2.2)
+                ref_text = neutral_init(ref_text)
             problems += [f"{key}: {x}" for x in gate_problems(
-                ftext, odin3_bin, ref.read_text(), result.gate_engines, key,
+                ftext, odin3_bin, ref_text, result.gate_engines, key,
                 hints.get(key))]
         problems += [f"form not produced: {k}: {v}" for k, v in result.form_errors.items()]
+        for key, ftext in result.form_text.items():
+            if key.startswith("si-"):  # silicon: mapped FF count must equal the netlist count
+                want = ff_clean if key.endswith("-clean") else ff_infected
+                if ff_count(ftext) != want:
+                    problems.append(f"{key}: FF count {ff_count(ftext)} != netlist {want}")
+        result.form_seconds = round(time.monotonic() - t_forms, 1)
         if problems:
             result.error = "release gate: " + "; ".join(problems)[:400]
             result.gate_pass = False
@@ -468,7 +485,7 @@ def build_n_circuits(
     return passing, failed
 
 
-__all__ = ["BASES", "PAYLOAD_KINDS", "FORMS", "BuiltCircuit", "build_one_circuit",
+__all__ = ["BASES", "PAYLOAD_KINDS", "FORMS", "ALL_FORMS", "BuiltCircuit", "build_one_circuit",
            "build_n_circuits", "draw_trojans", "ff_count", "draw_trojan_count",
            "magic_match_probability", "shipped_programs", "check_shipped_silence",
            "shipped_silence_ok"]

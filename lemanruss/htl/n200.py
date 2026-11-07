@@ -18,6 +18,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import os
 import random
 import resource
 import sys
@@ -27,6 +28,7 @@ from pathlib import Path
 from lemanruss.htl import cutstitch as cs
 from lemanruss.htl import edit_netlist as en
 from lemanruss.htl import obfuscate as ob
+from lemanruss.htl import si_gates
 from lemanruss.htl.bitsim import compile_model
 from lemanruss.htl.blif_text import parse_single_model
 from lemanruss.htl.edit_netlist import Editor
@@ -55,6 +57,16 @@ from lemanruss.htl.n200plan import (
 N_SET = 100
 N_INF_LO, N_INF_HI = 10, 70
 SETS = (("K4", "k4"), ("K6", "k6"), ("G", "gates"))
+SETS_ALL = (*SETS, ("S", "silicon"))  # S = Seeker-Si rc2 (spec 2026-11-07)
+
+
+def active_sets() -> tuple[tuple[str, str], ...]:
+    """The sets built: `LEMANRUSS_SETS` (comma list of K4,K6,G,S), default the three of rc5/rc7."""
+    names = os.environ.get("LEMANRUSS_SETS", "")
+    if not names:
+        return SETS
+    want = names.split(",")
+    return tuple(s for s in SETS_ALL if s[0] in want)
 MULTI = ((1, 0.5), (2, 0.3), (3, 0.2))
 MAX_FAILED = 300  # failed proposals per set before the set is declared exhausted
 MAX_DUP = 60  # consecutive repeated structures of a clean circuit before the set is exhausted
@@ -163,7 +175,7 @@ class BaseBuild:
         self.scratch.mkdir(parents=True, exist_ok=True)
         (self.key / "pre").mkdir(parents=True, exist_ok=True)
         self.perm = random.Random(f"{seed}:{self.base}:ids").sample(
-            range(3 * N_SET + 1), 3 * N_SET + 1)
+            range(len(active_sets()) * N_SET + 1), len(active_sets()) * N_SET + 1)
         self.first = first
         self.slot = 0
         self.golden_text = ob.canonical(base_path.read_text(encoding="utf-8"))
@@ -202,6 +214,7 @@ def finish(
     every circuit is cut, either on its own energy-ring / slowdown-chain Trojans (real cuts) or,
     when it has none, on a dummy region of the same size distribution, so "the circuit was cut"
     carries no label."""
+    t_fin = time.monotonic()
     src = pre if pre is not None else bb.golden_path
     rng = bb.rng(set_name)
     cuts = cuts_for(bb, src, specs, rng)
@@ -233,9 +246,17 @@ def finish(
     h = _sha(text)
     if h in bb.hashes:
         return "dup"
+    verilog = ""
+    if kind == "silicon":
+        verilog, problems = si_gates.check(text, si_gates.ff_count(bb.golden_text))
+        if problems:
+            return "silicon gate: " + "; ".join(problems)[:300]
     bb.hashes.add(h)
     bb.sigs.add((kind, sig))
     (bb.circuits / f"{cid}.blif").write_text(text, encoding="utf-8")
+    if verilog:
+        (bb.out / "circuits_v").mkdir(exist_ok=True)
+        (bb.out / "circuits_v" / f"{cid}.v").write_text(verilog, encoding="utf-8")
     if pre is not None:
         with gzip.open(bb.key / "pre" / f"{cid}.blif.gz", "wt", encoding="utf-8") as fh:
             fh.write(pre.read_text(encoding="utf-8"))
@@ -243,7 +264,7 @@ def finish(
     rec: Json = {"id": cid, "set": set_name, "map": kind, "script": script, "obf_cec": verdict,
                  "fire_checked": len(fired),
                  "cut_sizes": [len(c.cut.idx) for c in cuts], "cut_labels": cut_labels,
-                 "rings": rings}
+                 "rings": rings, "finish_s": round(time.monotonic() - t_fin, 2)}
     if any(label.startswith("slow") for label in cut_labels):
         rec["slow_depth"] = _depth(text)
         rec["slow_depth_ref"] = slow_depth_ref(bb, kind, set_name)
@@ -426,7 +447,8 @@ def build_base(job: tuple[str, Path, Path, int, int]) -> Json:
         bb.fail("all", f"canonical golden: {verdict}")
     sets: dict[str, dict[str, int | str]] = {}
     try:
-        for si, (set_name, kind) in enumerate(SETS):
+        for set_name, kind in active_sets():
+            si = [n for n, _k in SETS_ALL].index(set_name)
             made = make_ctx(bb.golden_path, seed * 10 + si)
             if isinstance(made, str):
                 bb.fail(set_name, made)

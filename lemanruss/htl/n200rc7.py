@@ -22,7 +22,7 @@ from pathlib import Path
 from lemanruss.htl import edit_netlist as en
 from lemanruss.htl.bitsim import compile_model, latches_of
 from lemanruss.htl.blif_text import parse_single_model
-from lemanruss.htl.n200 import SETS, BaseBuild, apply_specs, finish
+from lemanruss.htl.n200 import SETS_ALL, BaseBuild, active_sets, apply_specs, finish
 from lemanruss.htl.n200check import (
     Json,
     cec_forced_off,
@@ -210,7 +210,8 @@ def build_base_rc7(job: tuple[str, Path, Path, int, int]) -> Json:
     if verdict != "equivalent":
         bb.fail("all", f"canonical golden: {verdict}")
     sets: dict[str, dict[str, int | str]] = {}
-    for si, (set_name, kind) in enumerate(SETS):
+    for set_name, kind in active_sets():
+        si = [n for n, _k in SETS_ALL].index(set_name)
         try:
             made = make_ctx_rc7(bb.golden_path, seed * 10 + si)
             if isinstance(made, str):

@@ -40,6 +40,18 @@ RC7_DESIGN_MD = (
     "always-on slowdown. Spec section 13.")
 
 
+SILICON_NOTE = (
+    "\n## Silicon form (Seeker-Si rc2)\n\n"
+    "Every circuit is the silicon form of the pipeline above: the same Trojan insertion and the "
+    "same random ABC optimisation script distribution, mapped by Odin III `abc --gates sky130hd` "
+    "plus `dfflibmap sky130hd` (sky130_fd_sc_hd standard cells, no Yosys), then the same shuffle "
+    "and rename. `circuits/<id>.blif.gz` holds one `.names` cover per cell; "
+    "`circuits_v/<id>.v.gz` the cell netlist with the same net names. The goldens are the mapped "
+    "clean bases. Mapping keeps flip-flop counts, so every circuit of a base has the same count "
+    "(per-circuit gate). Bases are those of the other forms; a base's silicon circuits are "
+    "comparable base for base, not per circuit, with its gates, lut4 and lut6 circuits.\n")
+
+
 def datasheet(
     family: str, name: str, tools: Tools, counts: Json, bases: list[str], tables_md: str,
     licences: Path | None, lineage: str, version: str,
@@ -122,6 +134,11 @@ def build_release_n200(
     for cid in sorted(entries):
         files[cid] = gz_bytes((root / entries[cid]["file"]).read_text(encoding="utf-8"))
         (out_c / f"{cid}.blif.gz").write_bytes(files[cid])
+        vsrc = root / "circuits_v" / f"{cid}.v"
+        if vsrc.is_file():  # Seeker-Si rc2: cell Verilog next to the BLIF, same net names
+            (out / "circuits_v").mkdir(exist_ok=True)
+            (out / "circuits_v" / f"{cid}.v.gz").write_bytes(
+                gz_bytes(vsrc.read_text(encoding="utf-8")))
     prov: dict[str, Json] = {}
     by_base: dict[str, int] = {}
     for cid in sorted(entries):
@@ -173,5 +190,8 @@ def build_release_n200(
         .replace(" (in progress; name as dictated, spelling to be confirmed; no unpublished "
                  "results are cited)", "; no unpublished results are cited"), version),
         encoding="utf-8")
+    if (out / "circuits_v").is_dir():
+        with (out / "DATASHEET.md").open("a", encoding="utf-8") as fh:
+            fh.write(SILICON_NOTE)
     write_sha256sums(out)
     return {"release": name, "counts": counts}

@@ -11,11 +11,11 @@ import multiprocessing
 from pathlib import Path
 
 from lemanruss.htl.families import ADDS, LINEAGE, VERSION
-from lemanruss.htl.n200 import build_base
+from lemanruss.htl.n200 import active_sets, build_base
 from lemanruss.htl.n200check import Json
 from lemanruss.htl.n200plan import TSpec, trojan_of
 
-BLOCK = 301  # ids reserved per base: golden + 3 sets of 100
+BLOCK = 100 * len(active_sets()) + 1  # ids reserved per base: golden + the sets of 100
 
 
 def gate_count(path: Path) -> int:
