@@ -18,6 +18,7 @@ section 3 -- this module itself does not hard-code N=100.
 from __future__ import annotations
 
 import random
+import re
 import shutil
 import time
 from dataclasses import dataclass, field
@@ -61,6 +62,7 @@ from lemanruss.htl.proc_run import (
     write_mcu_program,
     write_pico_program,
 )
+from lemanruss.htl.proc_run import _run as _run_cmd
 from lemanruss.htl.proc_witness import (
     alu_magic_word,
     alu_witness_words,
@@ -136,6 +138,9 @@ class BuiltCircuit:
     gate_pass: bool = False
     error: str = ""
     form_seconds: float = 0.0  # mapping plus release gate of the forms (wall)
+    gate_init: dict[str, str] = field(default_factory=dict)  # si form key -> strict | init-reset
+    src_init: dict[str, int] = field(default_factory=dict)  # `.latch` init values of the source
+    si_sim: dict[str, bool] = field(default_factory=dict)  # silicon-netlist fire/silence results
 
 
 def _prepare_and_patch(
@@ -322,6 +327,103 @@ def shipped_silence_ok(silence: dict[str, dict[str, bool]]) -> bool:
     return all(res["rtl"] and res["nl"] for res in silence.values())
 
 
+_TB = {"darkriscv": "dark_tb.v", "mcu": "mcu_tb.v", "mips_16": "mips_tb.v",
+       "picorv32": "pico_tb.v"}
+_TOP = {"darkriscv": "darksocv", "mcu": "single_cycle_BRAM_top", "mips_16": mips16.TOP,
+        "picorv32": "picorv32"}
+
+
+def latch_inits(text: str) -> dict[str, int]:
+    """Count of `.latch` lines by initial value (0, 1, 2 = don't care, 3 = unknown)."""
+    counts: dict[str, int] = {}
+    for ln in text.splitlines():
+        if ln.startswith(".latch"):
+            w = ln.split()
+            init = w[-1] if len(w) in (4, 6) else "3"
+            counts[init] = counts.get(init, 0) + 1
+    return counts
+
+
+def _port_key(name: str) -> tuple[str, int]:
+    m = re.fullmatch(r"(.*)\[(\d+)\]", name)
+    return (m.group(1), int(m.group(2))) if m else (name, -1)
+
+
+def sorted_ports(text: str) -> str:
+    """The BLIF with `.inputs` and `.outputs` names in (bus, bit) order; nothing else changes."""
+    out = []
+    for ln in text.split("\n"):
+        if ln.startswith((".inputs ", ".outputs ")):
+            w = ln.split()
+            ln = w[0] + " " + " ".join(sorted(w[1:], key=_port_key))
+        out.append(ln)
+    return "\n".join(out)
+
+
+def run_blif_trace(
+    base: str, out: Path, blif_text: str, odin3_bin: Path, tag: str
+) -> str:
+    """Odin III two-state simulation of a (silicon) BLIF netlist with the base's testbench in
+    `out`, whose program image is already written; the trace text. Initial values are those the
+    BLIF states (`dfxtp_1` flip-flops carry none: unknown, read as 0 by the simulator)."""
+    dark = base == "darkriscv"
+    cwd = out / "rtl" if dark else out
+    rel = "../" if dark else ""
+    # the released model is named `top`; the testbench instantiates the core by its own name
+    # and the simulator rebuilds buses from ports in bit order, which the shuffle took away
+    named = sorted_ports(blif_text.replace(".model top\n", f".model {_TOP[base]}\n", 1))
+    (out / f"{tag}.si.blif").write_text(named, encoding="utf-8")
+    run = _run_cmd([str(odin3_bin), "--top", _TOP[base], "-p",
+                    f"read_blif {rel}{tag}.si.blif; sim_tb --out {rel}{tag}.si.txt {_TB[base]}"],
+                   cwd)
+    if run.returncode != 0:
+        raise RuntimeError(f"odin3 silicon sim_tb failed: {run.stdout}\n{run.stderr}")
+    return (out / f"{tag}.si.txt").read_text()
+
+
+def silicon_sim_gate(
+    base: str, clean: Path, inf: Path, result: BuiltCircuit, magic_words: list[int],
+    kinds: list[str], odin3_bin: Path, cycles: int, circuit_id: str,
+) -> list[str]:
+    """Condition of the controller (2026-11-07): every Trojan fires and the neutral stimuli stay
+    silent on the SILICON netlists themselves (clean twin against infected twin, their own
+    initial-value semantics). Records the verdicts in `result.si_sim`; returns the problems."""
+    problems: list[str] = []
+    ctext, itext = result.form_text["si-clean"], result.form_text["si-infected"]
+
+    def traces(words: list[int], tag: str, alu: bool = False) -> tuple[str, str]:
+        prog = alu_witness_words(base, words[0]) if alu else words
+        _write_program(base, inf, prog)
+        _write_program(base, clean, prog)
+        return (run_blif_trace(base, clean, ctext, odin3_bin, f"{tag}-c"),
+                run_blif_trace(base, inf, itext, odin3_bin, f"{tag}-i"))
+
+    for k, (word, kind) in enumerate(zip(magic_words, kinds, strict=True)):
+        witness = alu_witness_words(base, word) if kind == "alu" else _witness_words(base, [word])
+        _write_program(base, inf, witness)
+        _write_program(base, clean, witness)
+        c = run_blif_trace(base, clean, ctext, odin3_bin, f"{circuit_id}-sw{k}-c")
+        i = run_blif_trace(base, inf, itext, odin3_bin, f"{circuit_id}-sw{k}-i")
+        fires = not traces_equal(c, i)
+        result.si_sim[f"fires{k}"] = fires
+        if not fires:
+            problems.append(f"Trojan {k} ({kind}) does not fire on the silicon netlist")
+    neutral = _witness_words(base, [])
+    c, i = traces(neutral, f"{circuit_id}-sn")
+    result.si_sim["silent_neutral"] = traces_equal(c, i)
+    if not result.si_sim["silent_neutral"]:
+        problems.append("silicon netlist not silent on the neutral program")
+    for word, kind in zip(magic_words, kinds, strict=True):
+        if kind != "alu":
+            continue
+        c, i = traces([neutral_shift_word(word, base)], f"{circuit_id}-ss", alu=True)
+        ok = traces_equal(c, i)
+        result.si_sim["silent_shift"] = result.si_sim.get("silent_shift", True) and ok
+        if not ok:
+            problems.append("silicon netlist not silent on the neutral shift")
+    return problems
+
+
 def build_one_circuit(
     circuit_id: str, base: str, rng: random.Random, used_words: set[int], odin3_bin: Path,
     work: Path, forced: tuple[list[str], list[int]] | None = None, functional_only: bool = False,
@@ -441,11 +543,22 @@ def build_one_circuit(
         for key, ftext in result.form_text.items():
             ref = clean_nl if key.endswith("-clean") else inf_nl
             ref_text = ref.read_text()
-            if key.startswith("si-"):  # dfxtp_1 has no initial value (spec section 2.2)
-                ref_text = neutral_init(ref_text)
-            problems += [f"{key}: {x}" for x in gate_problems(
-                ftext, odin3_bin, ref_text, result.gate_engines, key,
-                hints.get(key))]
+            got = gate_problems(ftext, odin3_bin, ref_text, result.gate_engines, key,
+                                hints.get(key))
+            if key.startswith("si-"):
+                # dfxtp_1 has no initial value (spec section 2.2): when the strict check fails on
+                # equivalence, the same check against the source with every initial value reset
+                # decides, for clean and infected twins alike; the gate used is recorded.
+                if got and any("equivalence" in x.lower() or "equivalent" in x.lower()
+                               for x in got):
+                    got2 = gate_problems(ftext, odin3_bin, neutral_init(ref_text),
+                                         result.gate_engines, key, hints.get(key))
+                    if not got2:
+                        got = []
+                        result.gate_init[key] = "init-reset"
+                elif not got:
+                    result.gate_init[key] = "strict"
+            problems += [f"{key}: {x}" for x in got]
         problems += [f"form not produced: {k}: {v}" for k, v in result.form_errors.items()]
         for key, ftext in result.form_text.items():
             if key.startswith("si-"):  # silicon: mapped FF count must equal the netlist count
@@ -453,6 +566,14 @@ def build_one_circuit(
                 if ff_count(ftext) != want:
                     problems.append(f"{key}: FF count {ff_count(ftext)} != netlist {want}")
         result.form_seconds = round(time.monotonic() - t_forms, 1)
+        result.src_init = latch_inits(clean_nl.read_text())
+        if not problems and "si-clean" in result.form_text and "si-infected" in result.form_text:
+            sim_problems = silicon_sim_gate(
+                base, clean, inf, result, magic_words, kinds, odin3_bin, cycles, circuit_id)
+            if sim_problems:
+                result.error = "silicon sim: " + "; ".join(sim_problems)[:300]
+                result.gate_pass = False
+                return result
         if problems:
             result.error = "release gate: " + "; ".join(problems)[:400]
             result.gate_pass = False
