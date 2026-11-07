@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 
 CAP_S = 1800
+STALL_S = 300  # a log silent this long at DRT-0179 "Init gr pin query" is a hang, not slowness
 UTILS = (25, 18)  # percent: first try, retry
 TOOLS = Path("/home/jamiespa/odin3-ws/work/tools")
 
@@ -24,6 +25,11 @@ def _rss_mb(path: Path) -> int:
         return int(path.read_text(encoding="utf-8").strip().splitlines()[-1]) // 1024
     except (OSError, ValueError, IndexError):
         return -1
+
+
+def _in_pin_query(log: Path) -> bool:
+    tail = log.read_bytes()[-400:].decode("utf-8", "replace").strip().splitlines()
+    return bool(tail) and "Init gr pin query" in tail[-1]
 
 
 def clock_of(blif: str) -> str:
@@ -55,17 +61,31 @@ def run_once(
     proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=env,
                             start_new_session=True)
     capped = False
-    try:
-        proc.wait(timeout=cap_s)
-    except subprocess.TimeoutExpired:
-        os.killpg(proc.pid, signal.SIGKILL)
-        proc.wait()
-        capped = True
+    stalled = False
+    last_size, last_change = -1, time.monotonic()
+    while True:
+        try:
+            proc.wait(timeout=5)
+            break
+        except subprocess.TimeoutExpired:
+            pass
+        now = time.monotonic()
+        size = (out / "openroad.log").stat().st_size
+        if size != last_size:
+            last_size, last_change = size, now
+        elif now - last_change > STALL_S and _in_pin_query(out / "openroad.log"):
+            stalled = True  # detailed routing sits at DRT-0179 with a silent log (deterministic)
+        if stalled or now - t0 > cap_s:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait()
+            capped = True
+            break
     log.close()
     steps = out / "or/steps.txt"
     last = steps.read_text(encoding="utf-8").strip().splitlines()[-1] if steps.exists() else ""
     drc = out / "or/drc.rpt"
-    return {"util": util, "wall_s": round(time.monotonic() - t0, 1), "capped": capped,
+    return {"util": util, "stalled": stalled, "wall_s": round(time.monotonic() - t0, 1),
+            "capped": capped,
             "rc": proc.returncode, "last_step": last.split(",")[0],
             "rss_mb": _rss_mb(rss_file),
             "drc_violations": drc.read_text(encoding="utf-8").count("violation")
@@ -83,8 +103,10 @@ def run(
         if a["rc"] == 0 and not a["capped"]:
             break
     ok = attempts[-1]["rc"] == 0 and not attempts[-1]["capped"]
-    rec: dict[str, object] = {"cells": cells, "ok": ok, "attempts": attempts,
-                              "flow_limit": None if ok else
-                              ("cap" if attempts[-1]["capped"] else f"rc{attempts[-1]['rc']}")}
+    limit: str | None = None
+    if not ok:
+        last = attempts[-1]
+        limit = ("stall" if last["stalled"] else "cap") if last["capped"] else f"rc{last['rc']}"
+    rec: dict[str, object] = {"cells": cells, "ok": ok, "attempts": attempts, "flow_limit": limit}
     (out / "pnr.json").write_text(json.dumps(rec, indent=1), encoding="utf-8")
     return rec
