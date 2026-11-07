@@ -122,6 +122,7 @@ def build_release_n200(
     (out_k / "pre").mkdir(parents=True)
     (out_k / "witnesses").mkdir()
     entries = {c["id"]: c for c in man["circuits"]}
+    labels = {k: v for k, v in labels.items() if k in entries}  # bases dropped from the manifest
     gold_of = {}
     set_of = {}
     for s in sets.values():

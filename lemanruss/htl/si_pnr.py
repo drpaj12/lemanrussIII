@@ -42,15 +42,23 @@ def clock_of(blif: str) -> str:
 
 
 def run_once(
-    verilog: Path, clk: str, out: Path, util: int, cap_s: int, odin_root: Path
+    verilog: Path, clk: str, out: Path, util: int, cap_s: int, odin_root: Path,
+    replace: tuple[tuple[str, str], ...] = (),
 ) -> dict[str, object]:
+    """One OpenROAD run; `replace` is a list of (old, new) text edits of the flow script, each of
+    which must match (a flow-parameter change, the same for every circuit of a set)."""
     out.mkdir(parents=True, exist_ok=True)
     (out / "clean.v").write_text(verilog.read_text(encoding="utf-8"), encoding="utf-8")
     tcl = (odin_root / "tools/silicon/openroad_flow.tcl").read_text(encoding="utf-8")
     if "-utilization 25" not in tcl:
         raise RuntimeError("openroad_flow.tcl no longer holds '-utilization 25'")
     flow = out / "flow.tcl"
-    flow.write_text(tcl.replace("-utilization 25", f"-utilization {util}"), encoding="utf-8")
+    tcl = tcl.replace("-utilization 25", f"-utilization {util}")
+    for old, new in replace:
+        if old not in tcl:
+            raise RuntimeError(f"flow script has no {old!r}")
+        tcl = tcl.replace(old, new)
+    flow.write_text(tcl, encoding="utf-8")
     env = dict(os.environ, PDK=str(TOOLS / "pdk/sky130A"), OUT=str(out), TOP="top", CLK=clk)
     exe = TOOLS / "mamba/envs/orcond/bin/openroad"
     t0 = time.monotonic()
