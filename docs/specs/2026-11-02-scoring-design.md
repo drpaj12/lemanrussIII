@@ -256,6 +256,33 @@ trigger that equals some golden net on all lanes is missed. A hit therefore mean
 region", and the chance level (4) is printed next to the hit rate so an over-wide region cannot
 flatter a detector unnoticed.
 
+## 9a. Trojan regions of processor releases (answer key only; Peter 2026-11-06, Seeker-Proc rc3)
+
+A processor Trojan fires on an instruction the core fetches from its memory interface, so no
+open-loop input sequence reproduces a firing trigger and the witness lane of section 9 cannot be
+built. The region of a Seeker-Proc circuit `R` is taken against the clean twin `T` of the answer
+key (`lemanruss/score/proc_regions.py`) on random lanes only:
+
+    free   = { net x of R, not a primary input : no net of T, and no complement of one, has the
+               same signature on 64 random lanes over 16 cycles }
+    victim = the primary outputs of R whose fan-in contains a free net
+    region = free, restricted to the fan-in of the victim outputs
+
+`R` and `T` get identical inputs by port name. A rare trigger (a 16- or 32-bit magic word) reads a
+constant on random lanes and its partial-match logic has no counterpart in `T`, so it is in the
+region; the payload merge cell usually equals a net of `T` on random lanes and is not. Two stated
+limits. (1) A circuit holds 1 to 3 Trojans that are not told apart, so its region is one cell set
+and `regions.json` repeats it once per Trojan (a claim in the set hits one Trojan; matching stays
+one to one, so level 3 of a circuit with `t` Trojans is generous by at most the cases where one
+claim could stand for several). (2) `T` was mapped by its own ABC script, so restructured logic
+of `R` also lacks a counterpart and the region over-approximates; the chance control of section 4
+prints the level-3 score of random claims of the same sizes beside every detector. Stored as
+`answer_key/regions.json` with the schema of section 9; built by
+`python -m lemanruss.score.proc_regions RELEASE --out regions.json`.
+Levels for processor runs: `python -m lemanruss.detect.proclevels` (leave-one-base-out cells of
+`lemanruss.detect.procrun`; with `--range-check` a circuit outside the detector's training flip-flop
+range is left out and counted).
+
 ## 10. Anonymised base names
 
 `lemanruss anonymise RELEASE --key KEY --out PUBLIC_DIR [--seed S]` writes the public evaluation
