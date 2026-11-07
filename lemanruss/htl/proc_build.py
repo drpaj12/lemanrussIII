@@ -68,6 +68,7 @@ from lemanruss.htl.proc_witness import (
     neutral_shift_word,
 )
 from lemanruss.htl.rv32i import random_magic_word
+from lemanruss.htl.si_gates import neutral_init
 
 BASES = ("mips_16", "mcu", "picorv32", "darkriscv")  # smallest-to-biggest by black-boxed FF
 # count (Peter's standing smaller-to-bigger rule): mips_16 268, mcu 1310, picorv32 1615,
@@ -439,8 +440,11 @@ def build_one_circuit(
             problems += [f"{key}.nl: {x}" for x in structural_problems(nl.read_text())]
         for key, ftext in result.form_text.items():
             ref = clean_nl if key.endswith("-clean") else inf_nl
+            ref_text = ref.read_text()
+            if key.startswith("si-"):  # dfxtp_1 has no initial value (spec section 2.2)
+                ref_text = neutral_init(ref_text)
             problems += [f"{key}: {x}" for x in gate_problems(
-                ftext, odin3_bin, ref.read_text(), result.gate_engines, key,
+                ftext, odin3_bin, ref_text, result.gate_engines, key,
                 hints.get(key))]
         problems += [f"form not produced: {k}: {v}" for k, v in result.form_errors.items()]
         for key, ftext in result.form_text.items():

@@ -15,6 +15,22 @@ def ff_count(text: str) -> int:
     return sum(1 for ln in text.splitlines() if ln.startswith(".latch"))
 
 
+def neutral_init(text: str) -> str:
+    """The BLIF with every `.latch` initial value set to 2 (unknown, read as 0 by the checkers).
+    `dfflibmap` maps a flip-flop with INIT 0 or 1 to `dfxtp_1`, which has no initial value, so
+    the silicon form of a core is compared with its source from the common all-zero state."""
+    out = []
+    for ln in text.splitlines():
+        if ln.startswith(".latch"):
+            w = ln.split()
+            rest = w[3:]
+            if rest and len(rest[-1]) == 1 and rest[-1] in "0123" and len(rest) in (1, 3):
+                rest = rest[:-1]
+            ln = " ".join([*w[:3], *rest, "2"])
+        out.append(ln)
+    return "\n".join(out) + "\n"
+
+
 def check(text: str, golden_ff: int | None) -> tuple[str, list[str]]:
     """(Verilog of the cells, problems); an empty problem list is a pass."""
     problems = structural_problems(text)

@@ -13,6 +13,15 @@ GOOD = (".model top\n.inputs a b clk\n.outputs y\n.names a b n1\n11 1\n"
         ".latch n1 y re clk 2\n.end\n")
 
 
+class NeutralInitTest(unittest.TestCase):
+    def test_every_latch_gets_init_2(self) -> None:
+        text = (".model t\n.latch a b re clk 1\n.latch c d re clk\n.latch e f 0\n"
+                ".latch g h fe clk 3\n.end\n")
+        got = si_gates.neutral_init(text).splitlines()
+        self.assertEqual(got[1:5], [".latch a b re clk 2", ".latch c d re clk 2",
+                                    ".latch e f 2", ".latch g h fe clk 2"])
+
+
 class ActiveSetsTest(unittest.TestCase):
     def test_default_is_the_three_sets(self) -> None:
         with mock.patch.dict(os.environ, {}, clear=False):
