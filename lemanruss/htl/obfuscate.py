@@ -220,6 +220,56 @@ def signature(text: str) -> str:
     return hashlib.sha256("|".join(outs + ffs).encode()).hexdigest()
 
 
+# ---- buffer-free silicon netlists ----------------------------------------------------------
+
+def _is_buf(b: Block) -> bool:
+    w = b[0].split()
+    return w[0] == ".names" and len(w) == 3 and [r.split() for r in b[1:]] == [["1", "1"]]
+
+
+def _subst(blocks: list[Block], old: str, new: str) -> None:
+    """Every use of net `old` (driver or reader) becomes `new`; a latch clock is left alone."""
+    for b in blocks:
+        w = b[0].split()
+        if w[0] == ".latch":
+            w[1:3] = [new if x == old else x for x in w[1:3]]
+        else:
+            w = [w[0], *(new if x == old else x for x in w[1:])]
+        b[0] = " ".join(w)
+
+
+def strip_buffers(text: str) -> str:
+    """Rule of the silicon form (spec 2026-11-07 section 3a): no non-inverting buffer cell.
+    `.names a b / 1 1` goes away by merging nets: b is replaced by a everywhere when b is not a
+    primary output; when b is a primary output and a is an internal net, a is renamed b. The
+    port names never change. A buffer that joins two ports, or a port to an input, stays (a
+    port cannot be an alias of another port). The same rule for every label and family."""
+    inputs, outputs, blocks = parse(text)
+    ports = set(inputs) | set(outputs)
+    clocks = {_latch(b[0])[3] for b in blocks if b[0].startswith(".latch")} - {""}
+    keep: set[int] = set()
+    while True:
+        pick = -1
+        for i, b in enumerate(blocks):
+            if i in keep or not _is_buf(b):
+                continue
+            a, o = b[0].split()[1:]
+            if o not in ports or (a not in ports and a not in clocks):
+                pick = i
+                break
+            keep.add(i)
+        if pick < 0:
+            break
+        a, o = blocks[pick][0].split()[1:]
+        del blocks[pick]
+        keep = {k - 1 if k > pick else k for k in keep}
+        if o in ports:
+            _subst(blocks, a, o)
+        else:
+            _subst(blocks, o, a)
+    return render(inputs, outputs, blocks)
+
+
 # ---- the Odin III run ------------------------------------------------------------------------
 
 def _abc_env() -> None:
@@ -242,6 +292,7 @@ def map_with_odin(src: Path, kind: str, script: str, work: Path, tag: str) -> st
             design.run_script(f"read_techlib {lib}; read_blif {src}; "
                               f"abc --gates {SKY_NAME} --script {sfile}; dfflibmap {SKY_NAME}; "
                               f"write_blif --gates-as-names {out}")
+            return strip_buffers(out.read_text(encoding="utf-8"))
         elif kind == "gates":
             design.run_script(f"read_techlib {LIB}; read_blif {src}; "
                               f"abc --gates {LIB_NAME} --script {sfile}; "
