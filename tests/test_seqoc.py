@@ -78,8 +78,8 @@ class Merge(unittest.TestCase):
                 ("labels", {"ss9001": "t1"}), ("sets", {"mmuart": {}}),
                 ("scripts", {}), ("trojans", {}), ("cuts", {}),
                 ("rareness", []), ("failures", []))
-            for name, val in new_files:
-                _w(new / "answer_key" / f"{name}.json", val)
+            for nm, v2 in new_files:
+                _w(new / "answer_key" / f"{nm}.json", v2)
             (new / "answer_key" / "pre").mkdir()
             (new / "answer_key" / "witnesses").mkdir()
             _w(new / "manifest.json", {
