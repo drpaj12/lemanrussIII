@@ -14,10 +14,10 @@ import subprocess
 import time
 from pathlib import Path
 
-CAP_S = 1800
+CAP_S = 3600  # wall cap per attempt (controller 2026-11-08; 10-11k cell cores take 33-45 min)
 # Silent-log stall rule, equal to the cap = off: a 300 s rule killed a 5,758-cell run that
 # finished in 985 s when rerun without it.
-STALL_S = 1800
+STALL_S = CAP_S
 UTILS = (25, 18)  # percent: first try, retry
 TOOLS = Path("/home/jamiespa/odin3-ws/work/tools")
 
@@ -121,6 +121,6 @@ def run(
         last = attempts[-1]
         limit = ("stall" if last["stalled"] else "cap") if last["capped"] else f"rc{last['rc']}"
     rec: dict[str, object] = {"cells": cells, "ok": ok, "attempts": attempts, "flow_limit": limit,
-                              "rule": "cap1800, retry at 18% only after a flow error"}
+                              "rule": "cap3600, retry at 18% only after a flow error"}
     (out / "pnr.json").write_text(json.dumps(rec, indent=1), encoding="utf-8")
     return rec

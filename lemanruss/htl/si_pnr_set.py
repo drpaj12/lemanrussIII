@@ -122,8 +122,11 @@ def main(argv: list[str] | None = None) -> None:
         old = dest / "pnr.json"
         if old.is_file():
             prev = json.loads(old.read_text(encoding="utf-8"))
-            # redo only records killed by the superseded 300 s stall rule
-            if prev["ok"] or not any(a.get("stalled") for a in prev["attempts"]):
+            # redo only records made under a superseded rule: the 300 s stall rule or a cap
+            # shorter than the current one
+            short = any(a.get("stalled") or (a["capped"] and a["wall_s"] < si_pnr.CAP_S - 1)
+                        for a in prev["attempts"])
+            if prev["ok"] or not short:
                 continue
         v = _read(vpath[cid])
         tmp = args.out / f"{cid}.v"
