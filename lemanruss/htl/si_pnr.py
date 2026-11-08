@@ -15,7 +15,9 @@ import time
 from pathlib import Path
 
 CAP_S = 1800
-STALL_S = 300  # a log silent this long at DRT-0179 "Init gr pin query" is a hang, not slowness
+# Silent-log stall rule, equal to the cap = off: a 300 s rule killed a 5,758-cell run that
+# finished in 985 s when rerun without it.
+STALL_S = 1800
 UTILS = (25, 18)  # percent: first try, retry
 TOOLS = Path("/home/jamiespa/odin3-ws/work/tools")
 
@@ -43,7 +45,7 @@ def clock_of(blif: str) -> str:
 
 def run_once(
     verilog: Path, clk: str, out: Path, util: int, cap_s: int, odin_root: Path,
-    replace: tuple[tuple[str, str], ...] = (),
+    replace: tuple[tuple[str, str], ...] = (), stall_s: int | None = None,
 ) -> dict[str, object]:
     """One OpenROAD run; `replace` is a list of (old, new) text edits of the flow script, each of
     which must match (a flow-parameter change, the same for every circuit of a set)."""
@@ -81,7 +83,8 @@ def run_once(
         size = (out / "openroad.log").stat().st_size
         if size != last_size:
             last_size, last_change = size, now
-        elif now - last_change > STALL_S and _in_pin_query(out / "openroad.log"):
+        elif (now - last_change > (STALL_S if stall_s is None else stall_s)
+              and _in_pin_query(out / "openroad.log")):
             stalled = True  # detailed routing sits at DRT-0179 with a silent log (deterministic)
         if stalled or now - t0 > cap_s:
             os.killpg(proc.pid, signal.SIGKILL)
@@ -110,11 +113,14 @@ def run(
         attempts.append(a)
         if a["rc"] == 0 and not a["capped"]:
             break
+        if a["capped"]:  # a retry after a cap-out never succeeded in the trials; not repeated
+            break
     ok = attempts[-1]["rc"] == 0 and not attempts[-1]["capped"]
     limit: str | None = None
     if not ok:
         last = attempts[-1]
         limit = ("stall" if last["stalled"] else "cap") if last["capped"] else f"rc{last['rc']}"
-    rec: dict[str, object] = {"cells": cells, "ok": ok, "attempts": attempts, "flow_limit": limit}
+    rec: dict[str, object] = {"cells": cells, "ok": ok, "attempts": attempts, "flow_limit": limit,
+                              "rule": "cap1800, retry at 18% only after a flow error"}
     (out / "pnr.json").write_text(json.dumps(rec, indent=1), encoding="utf-8")
     return rec

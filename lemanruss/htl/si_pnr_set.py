@@ -107,10 +107,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--name", default="Seeker-Si")
     ap.add_argument("--max", type=int, default=0)
+    ap.add_argument("--fraction", type=float, default=FRACTION)
     ap.add_argument("--shard", default="0/1", help="i/n: run every n-th circuit from i")
     args = ap.parse_args(argv)
     by_base, vpath, bpath = load(args.kind, args.root, "")
-    chosen = pick(by_base, release_seed(None, "default"))
+    chosen = pick(by_base, release_seed(None, "default"), args.fraction)
     sized = sorted(chosen, key=lambda bc: (_read(vpath[bc[1]]).count("sky130_fd_sc_hd__"), bc[1]))
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "subset.json").write_text(json.dumps(sized), encoding="utf-8")  # private: key area
@@ -118,8 +119,12 @@ def main(argv: list[str] | None = None) -> None:
     i, n = (int(x) for x in args.shard.split("/"))
     for base, cid in sized[i::n]:
         dest = args.out / cid
-        if (dest / "pnr.json").is_file():
-            continue
+        old = dest / "pnr.json"
+        if old.is_file():
+            prev = json.loads(old.read_text(encoding="utf-8"))
+            # redo only records killed by the superseded 300 s stall rule
+            if prev["ok"] or not any(a.get("stalled") for a in prev["attempts"]):
+                continue
         v = _read(vpath[cid])
         tmp = args.out / f"{cid}.v"
         tmp.write_text(v, encoding="utf-8")
