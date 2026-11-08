@@ -15,7 +15,7 @@ import re
 import resource
 import subprocess
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 TIMEOUT = 1800
@@ -42,9 +42,10 @@ class OcDesign:
     admitted: bool
     reason: str  # why excluded, or the admission note
     notes: str = ""
+    category: str = ""  # exclusion category: memory, licence: copyleft, licence: none stated, size
 
 
-DESIGNS: tuple[OcDesign, ...] = (
+_SURVEY: tuple[OcDesign, ...] = (
     OcDesign(
         "ca_prng", 1, "opencores", "ca_prng", ("src/rtl/ca_prng.v",), (),
         "BSD-3-Clause style (InformAsic AB)", "COPYING.txt:1-5; src/rtl/ca_prng.v:16-19",
@@ -128,6 +129,31 @@ DESIGNS: tuple[OcDesign, ...] = (
         (), PERMISSIVE + " (Rudolf Usselmann, 2001)", "rtl/verilog/perf_opt/des.v:11-20",
         True, "no memory (the S-boxes are case statements, combinational), no tri-state"),
 )
+
+
+# Peter 2026-11-08: des is left out (size, owner's call); only licences that clearly permit
+# redistribution of derived netlists without copyleft terms (BSD / MIT style, or an explicit
+# "may be used and distributed without restriction" notice) are included; the rest are listed
+# with their licence and left out.
+_COPYLEFT = {"mmuart", "i2cslave", "spi", "uart2spi", "sdr_ctrl"}
+
+
+def _apply_policy(d: OcDesign) -> OcDesign:
+    if d.name == "des":
+        return replace(d, admitted=False, category="size: des, left out per owner",
+                       notes=d.reason, reason="left out per owner (size: 124035 gates, "
+                       "1984 flip-flops)")
+    if d.name in _COPYLEFT:
+        return replace(d, admitted=False, category="licence: copyleft", notes=d.reason,
+                       reason=f"copyleft licence ({d.licence.split(' per')[0].split(' (')[0]}); "
+                       "left out, licence noted")
+    if not d.admitted:
+        cat = "licence: none stated" if d.licence.startswith("none stated") else "memory"
+        return replace(d, category=cat)
+    return d
+
+
+DESIGNS: tuple[OcDesign, ...] = tuple(_apply_policy(d) for d in _SURVEY)
 
 
 @dataclass
@@ -223,3 +249,17 @@ def write_record(path: Path, results: list[ConvResult]) -> None:
 
 def admitted() -> list[OcDesign]:
     return [d for d in DESIGNS if d.admitted]
+
+
+def survey() -> list[OcDesign]:
+    """The 12 designs before the licence / size policy (conversion record of every design)."""
+    return list(_SURVEY)
+
+
+def candidates_table() -> list[str]:
+    """Markdown table of all 12 candidates: licence (file:line) and the verdict."""
+    out = ["| base | wave | licence | read at | verdict |", "|---|---|---|---|---|"]
+    for d in DESIGNS:
+        verdict = "included" if d.admitted else f"excluded, {d.category}: {d.reason}"
+        out.append(f"| {d.name} | {d.wave} | {d.licence} | {d.licence_where} | {verdict} |")
+    return out

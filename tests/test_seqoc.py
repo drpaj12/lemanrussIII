@@ -34,6 +34,14 @@ class AdmissionTable(unittest.TestCase):
         for n in ("simple_spi", "sdram_16bit", "wb_lcd", "verilog_cordic_core"):
             self.assertFalse(by[n].admitted, n)
 
+    def test_policy_keeps_only_permissive_licences(self) -> None:
+        self.assertEqual([d.name for d in ocbases.admitted()], ["ca_prng", "i2c"])
+        by = {d.name: d for d in ocbases.DESIGNS}
+        self.assertEqual(by["des"].category.split(":")[0], "size")
+        for n in ("mmuart", "i2cslave", "spi", "uart2spi", "sdr_ctrl"):
+            self.assertEqual(by[n].category, "licence: copyleft", n)
+        self.assertEqual(len(ocbases.candidates_table()), 2 + 12)
+
     def test_source_column(self) -> None:
         self.assertEqual(source_of("s27"), "ISCAS-89")
         self.assertEqual(source_of("b04"), "ITC-99")
@@ -42,8 +50,8 @@ class AdmissionTable(unittest.TestCase):
 
     def test_licence_lines_only_for_opencores(self) -> None:
         self.assertEqual(opencores_licence_lines(["s27", "sha"]), [])
-        lines = opencores_licence_lines(["mmuart", "s27"])
-        self.assertIn("GPL-3.0", "\n".join(lines))
+        lines = opencores_licence_lines(["ca_prng", "s27"])
+        self.assertIn("BSD-3-Clause", "\n".join(lines))
 
     def test_flist(self) -> None:
         d = next(x for x in ocbases.DESIGNS if x.name == "spi")

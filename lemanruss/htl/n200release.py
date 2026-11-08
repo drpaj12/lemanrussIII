@@ -45,19 +45,18 @@ def rc8_md() -> str:
     from lemanruss.htl import ocbases
 
     adm = [d for d in ocbases.DESIGNS if d.admitted]
-    exc = [d for d in ocbases.DESIGNS if not d.admitted]
     return "\n".join([
         "## rc8: OpenCores bases", "",
         "The 36 rc7 bases (circuits, answer key and witnesses) are carried over byte for byte; "
-        f"rc8 adds {len(adm)} OpenCores bases ("
-        + ", ".join(f"{d.name} (wave {d.wave})" for d in adm) + ") built as rc7 builds them "
-        "(same construction and gates), with Odin III rel-v150 reading the RTL "
-        "(`read_verilog; proc; opt; flatten; opt; lower`). The set stays flip-flops only, no "
-        "memories. Reset style: Odin III lowers asynchronous reset / set to synchronous logic "
-        "(its warning is kept in the admission record), so the netlists differ from the RTL on "
-        "reset timing. Where Odin III dropped a tri-state enable (i2cslave, sdr_ctrl) no "
-        "tri-state is left and the inout port is an output.", "",
-        "Not admitted: " + "; ".join(f"{d.name} ({d.reason.split(';')[0]})" for d in exc) + "."])
+        f"rc8 adds {len(adm)} OpenCores bases (" + ", ".join(d.name for d in adm)
+        + ") built as rc7 builds them (same construction and gates), with Odin III rel-v150 "
+        "reading the RTL (`read_verilog; proc; opt; flatten; opt; lower`). The set stays "
+        "flip-flops only, no memories. Reset style: Odin III lowers asynchronous reset / set to "
+        "synchronous logic (its warning is kept in the run record), so the netlists differ from "
+        "the RTL on reset timing. Only projects whose licence clearly permits redistribution "
+        "of derived netlists without copyleft terms are included; the others are listed below "
+        "with their licence and left out.", "",
+        "### OpenCores candidates", "", *ocbases.candidates_table()])
 
 
 def datasheet(
