@@ -20,6 +20,7 @@ from lemanruss.htl.release import (
     short_name,
     write_sha256sums,
 )
+from lemanruss.htl.seqoc import opencores_licence_lines
 
 Json = dict[str, object]
 
@@ -29,7 +30,7 @@ def _json(obj: object) -> str:
 
 
 RC7_DESIGN_MD = (
-    "## rc7 (round 9): magic-number triggers\n\n"
+    "## rc7 (round 9): magic-number triggers (rc8: unchanged)\n\n"
     "Every Trojan trigger is a magic-number comparator: an AND of literals on nets that already "
     "exist in the host (flip-flop outputs and primary inputs). It adds no flip-flop and no latch, "
     "and the energy payload (the one payload that adds flip-flops) is not used. Before ABC, each "
@@ -40,6 +41,25 @@ RC7_DESIGN_MD = (
     "always-on slowdown. Spec section 13.")
 
 
+def rc8_md() -> str:
+    from lemanruss.htl import ocbases
+
+    adm = [d for d in ocbases.DESIGNS if d.admitted]
+    exc = [d for d in ocbases.DESIGNS if not d.admitted]
+    return "\n".join([
+        "## rc8: OpenCores bases", "",
+        "The 36 rc7 bases (circuits, answer key and witnesses) are carried over byte for byte; "
+        f"rc8 adds {len(adm)} OpenCores bases ("
+        + ", ".join(f"{d.name} (wave {d.wave})" for d in adm) + ") built as rc7 builds them "
+        "(same construction and gates), with Odin III rel-v150 reading the RTL "
+        "(`read_verilog; proc; opt; flatten; opt; lower`). The set stays flip-flops only, no "
+        "memories. Reset style: Odin III lowers asynchronous reset / set to synchronous logic "
+        "(its warning is kept in the admission record), so the netlists differ from the RTL on "
+        "reset timing. Where Odin III dropped a tri-state enable (i2cslave, sdr_ctrl) no "
+        "tri-state is left and the inout port is an output.", "",
+        "Not admitted: " + "; ".join(f"{d.name} ({d.reason.split(';')[0]})" for d in exc) + "."])
+
+
 def datasheet(
     family: str, name: str, tools: Tools, counts: Json, bases: list[str], tables_md: str,
     licences: Path | None, lineage: str, version: str,
@@ -47,8 +67,12 @@ def datasheet(
     by_base = counts["by_base"]
     assert isinstance(by_base, dict)
     comb = family == "Seeker-Comb"
-    rc7 = not comb and version.endswith("rc7")
+    rc7 = not comb and version.endswith(("rc7", "rc8"))
     if rc7:
+        lineage = lineage.replace("ISCAS-89, ITC-99 and VTR sequential designs",
+                                  "ISCAS-89, ITC-99, VTR and OpenCores sequential designs"
+                                  if version.endswith("rc8") else
+                                  "ISCAS-89, ITC-99 and VTR sequential designs")
         lineage = lineage.replace(
             "counter and FSM-pattern triggers", "magic-number triggers (rc7)")
     return "\n".join([
@@ -70,12 +94,13 @@ def datasheet(
         ", ".join(f"{b} {n}" for b, n in sorted(by_base.items())), "",
         DESIGN_MD, "",
         *([RC7_DESIGN_MD, ""] if rc7 else []),
+        *([rc8_md(), ""] if not comb and version.endswith("rc8") else []),
         "## Rareness", "",
         ("Seeker-Comb: the trigger is an AND of rare-valued nets grown until the joint "
          "activation probability per random vector falls in a target band (p < 1e-2, 1e-3, "
          "1e-4; exact when the design has at most 20 inputs, else 2^20 vectors)."
          if comb else
-         ("Seeker-Seq rc7: magic-number triggers (an AND of literals on existing register "
+         ("Seeker-Seq rc7 / rc8: magic-number triggers (an AND of literals on existing register "
           "outputs and primary inputs, no added flip-flop), three speed bands each defined by "
           "P(trigger high at least once within 1024 cycles) over random multi-cycle simulation "
           "of the golden: fast 0.5-1, mid 0.05-0.5, slow 0.003-0.05."
@@ -85,7 +110,8 @@ def datasheet(
         "Rareness is measured on the circuit before obfuscation (`pre/`), where the trigger net "
         "exists.", "",
         tables_md, "",
-        "## Bases and licences", "", *licence_lines(licences, bases, family), "",
+        "## Bases and licences", "", *licence_lines(licences, bases, family),
+        *opencores_licence_lines(bases), "",
         "## Tools", "",
         f"- Odin III (build of the circuits): {tools.odin3_build_pin}; checkout used for "
         f"`lemanruss verify`: {tools.odin3_checkout}.",

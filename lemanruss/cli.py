@@ -93,6 +93,20 @@ def main(argv: list[str] | None = None) -> int:
     pd.add_argument("base", type=Path)
     pd.add_argument("--out", type=Path, required=True)
 
+    ocb = subparsers.add_parser("oc-bases", help="OpenCores bases to BLIF (Seq rc8 admission)")
+    ocb.add_argument("--external", type=Path, required=True, help="dir holding opencores/ etc.")
+    ocb.add_argument("--odin3-bin", type=Path, required=True)
+    ocb.add_argument("--out", type=Path, required=True)
+    sq = subparsers.add_parser("seq-rc8", help="Seeker-Seq rc8: OpenCores build and merge")
+    sq.add_argument("step", choices=["build", "merge"])
+    sq.add_argument("--bases", type=Path, nargs="*", default=[])
+    sq.add_argument("--out", type=Path, required=True)
+    sq.add_argument("--seed", type=int, default=None)
+    sq.add_argument("--workers", type=int, default=1)
+    sq.add_argument("--first-index", type=int, default=36)
+    sq.add_argument("--rc7", type=Path, help="unpacked rc7 release (circuits/, answer_key/)")
+    sq.add_argument("--rc7-manifest", type=Path, help="rc7 release manifest.json.gz")
+    sq.add_argument("--new", type=Path, help="the OpenCores build tree")
     n2 = subparsers.add_parser("n200", help="build a family at n = 200 per base (round 8)")
     n2.add_argument("name", choices=["Seeker-Comb", "Seeker-Seq"])
     n2.add_argument("--bases", type=Path, nargs="+", required=True)
@@ -165,6 +179,30 @@ def main(argv: list[str] | None = None) -> int:
         from lemanruss.score.anonymise import anonymise
 
         print(anonymise(args.release, args.key, args.out, args.seed))
+        return 0
+    if args.command == "oc-bases":
+        from lemanruss.htl import ocbases
+
+        conv = [ocbases.convert_design(args.external, d, args.odin3_bin, args.out)
+                for d in ocbases.admitted()]
+        ocbases.write_record(args.out / "admission.json", conv)
+        for cr in conv:
+            print(f"{cr.name}: {'ok' if cr.ok else 'FAILED ' + cr.why} gates {cr.gates} "
+                  f"latches {cr.latches}")
+        return 0 if all(cr.ok for cr in conv) else 1
+    if args.command == "seq-rc8":
+        if args.step == "build":
+            from lemanruss.htl.n200rc7 import run_family_rc7
+            from lemanruss.seedsrc import release_seed
+
+            res7 = run_family_rc7(args.bases, args.out, release_seed(args.seed, "Seeker-Seq-rc8"),
+                                  args.workers, first_index=args.first_index)
+            print(f"{len(res7)} bases built")
+            return 0
+        from lemanruss.htl.seqoc import merge_roots
+
+        assert args.rc7 and args.rc7_manifest and args.new
+        print(merge_roots(args.rc7, args.rc7_manifest, args.new, args.out))
         return 0
     if args.command == "n200":
         from lemanruss.htl.n200run import run_family as n200_run
