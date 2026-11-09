@@ -77,7 +77,20 @@ class ResetGate(unittest.TestCase):
         # a trigger that needs q = 1 is low in the reset state
         hi = (".model top\n.inputs x\n.outputs y\n.latch x q 2\n.names q x u\n11 1\n"
               ".names x y\n1 1\n.end\n")
-        self.assertFalse(reset_trigger_hit(compile_text(hi), ["u"], 1 << 12))
+        self.assertLess(reset_trigger_prob(compile_text(hi), ["u"], 1 << 12), 1e-2)
+
+
+class EarlyGate(unittest.TestCase):
+    def test_early_trigger_rejected_and_late_passes(self) -> None:
+        # t = q AND q2 where q2 <= q: high from cycle 2 on whatever the input, rejected
+        early = (".model top\n.inputs x\n.outputs y\n.latch one q 2\n.latch q q2 2\n"
+                 ".names one\n1\n.names q q2 t\n11 1\n.names x y\n1 1\n.end\n")
+        self.assertTrue(reset_trigger_hit(compile_text(early), ["t"], 64))
+        # t = x AND y1 AND ... (10 input literals) is rare in every cycle: passes
+        names = " ".join(f"i{k}" for k in range(10))
+        late = (f".model top\n.inputs {names}\n.outputs y\n.latch i0 q 2\n"
+                f".names q {names} t\n1" + "1" * 10 + " 1\n.names i0 y\n1 1\n.end\n")
+        self.assertFalse(reset_trigger_hit(compile_text(late), ["t"], 1 << 12))
 
 
 class FreeIds(unittest.TestCase):

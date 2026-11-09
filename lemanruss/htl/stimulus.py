@@ -202,12 +202,40 @@ def reset_trigger_prob(comp: Compiled, trigs: list[str], lanes: int = 1 << 16,
     return max((vals.get(t, 0).bit_count() / lanes for t in trigs), default=0.0)
 
 
+EARLY_CYCLES = 8
+EARLY_MAX_P = 0.5
+
+
+def early_trigger_prob(comp: Compiled, trigs: list[str], lanes: int = 1 << 11,
+                       seed: int = 0) -> float:
+    """P(some trigger is high at a cycle before `EARLY_CYCLES`, from reset, random inputs each
+    cycle), the largest over `trigs` jointly (any of them). A trigger that is high that early for
+    most input sequences cannot be kept silent by any stimulus."""
+    rng = random.Random(f"{seed}:early-trigger")
+    mask = (1 << lanes) - 1
+    state = _initial_state(comp, mask)
+    ever = 0
+    for _ in range(EARLY_CYCLES):
+        vals = {n: rng.getrandbits(lanes) for n in comp.data_inputs} | state
+        for c_name in comp.clocks:
+            vals[c_name] = 0
+        _step(comp, vals, mask)
+        for t in trigs:
+            ever |= vals.get(t, 0)
+        state = _next_state(comp, vals)
+    return ever.bit_count() / lanes
+
+
 def reset_trigger_hit(comp: Compiled, trigs: list[str], lanes: int = 1 << 16,
                       seed: int = 0) -> bool:
     """Build gate (Seeker v2.0): True when some trigger fires in the reset state for more than
-    `RESET_TRIGGER_MAX_P` of the random inputs, i.e. at cycle 0 for (almost) any input. A trigger
-    that matches the reset state only with a rare input pattern is a rare Trojan and passes."""
-    return reset_trigger_prob(comp, trigs, lanes, seed) > RESET_TRIGGER_MAX_P
+    `RESET_TRIGGER_MAX_P` of the random inputs (cycle 0 for almost any input), or when the
+    triggers are high within the first `EARLY_CYCLES` cycles for more than `EARLY_MAX_P` of
+    random input sequences (no stimulus can avoid them). A trigger that matches the reset state
+    only with a rare input pattern is a rare Trojan and passes."""
+    if reset_trigger_prob(comp, trigs, lanes, seed) > RESET_TRIGGER_MAX_P:
+        return True
+    return early_trigger_prob(comp, trigs, 1 << 11, seed) > EARLY_MAX_P
 
 
 def reset_active(golden: Compiled, circuits: list[Compiled], lanes: int, seed: int) -> list[int]:

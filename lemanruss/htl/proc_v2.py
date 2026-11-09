@@ -116,6 +116,7 @@ def _copy_gz(src: Path, dst: Path) -> None:
 def merge_proc(
     rc3: Path, si: Path, news: list[Path], out: Path, seed: int, datasheet_text: str,
     release_name: str, removed_rc3: set[str] | None = None, removed_si: set[str] | None = None,
+    drop_bases: set[str] | None = None,
 ) -> Json:
     """Writes the merged release `out` (must not exist). `removed_rc3` / `removed_si` are logical
     circuit ids (provenance `logical`) whose circuits, in every form, stay out of the release
@@ -123,7 +124,8 @@ def merge_proc(
     def keep_ids(root: Path, gone: set[str] | None) -> list[str]:
         prov0 = _d(_load(root / "answer_key" / "provenance.json"))
         return [str(r["id"]) for r in _rows_of(root)
-                if not gone or str(_d(prov0[str(r["id"])])["logical"]) not in gone]
+                if (not gone or str(_d(prov0[str(r["id"])])["logical"]) not in gone)
+                and str(r["base"]) not in (drop_bases or set())]
 
     ids_rc3 = keep_ids(rc3, removed_rc3)
     ids_si = keep_ids(si, removed_si)
