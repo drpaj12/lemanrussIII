@@ -12,21 +12,31 @@ model, insertion, verification). Status and next step: `docs/plans/2026-10-31-ht
 
 The full table, with status (works, released, in progress) and code locations, is in the repository
 `README.md`. In short: the HTL (triggers, payloads, composition); HDL and netlist insertion; Seeker-Comb
-and Seeker-Seq v2.0 families with obfuscation and release gates; releases (Comb rc4, Seq rc5, Proc
-pilot2) with datasheets and rareness reports; detector baselines (size-only, rare-signal, graphlet drift,
-GNNs); a submission format and scorer (hosting not decided). In progress: cut-and-stitch.
+and Seeker-Seq v2.0 families with obfuscation and release gates; releases (Seeker-Comb v2.0-rc5, Seeker-Seq
+v2.0-rc8, Seeker-Proc pilot3, Seeker-Si v2.0-rc1; earlier candidates are kept under `releases/` as superseded)
+with datasheets and rareness reports; detector baselines (size-only, rare-signal, graphlet drift, GNNs); cut-and-stitch;
+a submission format and scorer (hosting not decided). `lemanruss --help` lists every command.
 
 ## Quick start
 
-    python3 -m venv .venv && .venv/bin/pip install -e . --no-deps
-    export ODIN3_ROOT=<odin3 checkout> ODIN3_LIB=$ODIN3_ROOT/build/release/libodin3.so
+    python3 -m venv .venv && .venv/bin/pip install cffi numpy && .venv/bin/pip install -e . --no-deps
+    export ODIN3_ROOT=<odin3 checkout>                  # its lib/ and plugins/ are read
+    export ODIN3_LIB=<directory of your Odin III build>/libodin3.so
     export PYTHONPATH=$ODIN3_ROOT/plugins/python
+    export PATH=<directory of your Odin III build>:$PATH    # the `odin3` program (or set ODIN3_BIN)
 
     .venv/bin/lemanruss build --base-dir tests/fixtures --out work/htl-out
 
 Prints a results table (fires / equivalent / activation probability per Trojan, failures with
 reasons) and writes `work/htl-out/manifest.json` (the catalogue) and `work/htl-out/labels.json`
 (the answer key, kept separate -- a detector must never be pointed at `labels.json`).
+
+Odin III 1.6.0 (C ABI 7) is the version these commands were checked against; the Python binding
+needs `cffi`. Environment variables: `ODIN3_ROOT` (an Odin III checkout), `ODIN3_LIB` (`libodin3.so` of
+your build; `odin3-abc` is looked up beside it), `ODIN3_BIN` (the `odin3` program, default `odin3` on `PATH`,
+used by the processor pilots) and `ODIN3_ABC` (a standalone ABC binary, optional). VTR, iverilog and other tools
+outside the suite are listed with their versions on the hub's
+[tools page](https://github.com/drpaj12/YggdrasilIII/blob/main/docs/tools.md).
 
 ## What is in the HTL
 
