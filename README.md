@@ -1,5 +1,7 @@
 # lemanrussIII
-Leman Russ III is the hardware Trojan side branch of Yggdrasil III (hub: <https://github.com/drpaj12/YggdrasilIII>). It builds
+Leman Russ III is the hardware Trojan side branch of [Yggdrasil III](https://drpaj12.github.io/YggdrasilIII/)
+(hub repo: [drpaj12/YggdrasilIII](https://github.com/drpaj12/YggdrasilIII); feature sheet:
+[features](https://drpaj12.github.io/YggdrasilIII/features.html)). It builds
 benchmarks for the Seeker's Dilemma, finding Trojans when the detector does not know whether a circuit is infected, on Odin III.
 It is defensive research: the circuits are Trojans to detect.
 
