@@ -95,11 +95,12 @@ def draw_trojan_count(rng: random.Random) -> int:
 
 
 def draw_trojans(
-    base: str, rng: random.Random, used_words: set[int]
+    base: str, rng: random.Random, used_words: set[int], count: int | None = None
 ) -> tuple[list[str], list[int]]:
-    """One circuit's Trojan draw: count, a kind per Trojan, a magic word per Trojan (added to
+    """One circuit's Trojan draw: count (`count` when given: a replacement keeps the Trojan
+    count of the circuit it replaces), a kind per Trojan, a magic word per Trojan (added to
     `used_words`, which starts as the base's rejection set, `proc_witness.forbidden_words`)."""
-    kinds = [rng.choice(PAYLOAD_KINDS) for _ in range(draw_trojan_count(rng))]
+    kinds = [rng.choice(PAYLOAD_KINDS) for _ in range(count or draw_trojan_count(rng))]
     words = []
     for kind in kinds:
         # per-base alu magic word: see proc_witness.alu_magic_word; reset/stall: any legal ADDI.
