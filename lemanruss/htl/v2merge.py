@@ -460,8 +460,11 @@ def v2_datasheet(family: str, name: str, root: Path, tools: Tools, odin_version:
         "`pre/`, `dropped_cells.json`); a detector must not read it.", "",
         "Circuits per benchmark: " + ", ".join(f"{b} {n}" for b, n in sorted(by_base.items())), "",
         "## Reset-state Trojans replaced (Seq)", "",
-        "A Trojan whose trigger is satisfied in the reset state (checked on 65,536 random input "
-        "vectors at cycle 0) fires whatever the inputs: it is not a rare-triggered Trojan. "
+        "Not applicable: combinational circuits have no reset state." if family == "Seeker-Comb"
+        else "A Trojan whose trigger fires in the reset state for more than 1 percent of random "
+        "inputs (the loosest rareness band; estimated on 65,536 vectors at cycle 0) fires at "
+        "cycle 0 for almost any input: it is not a rare-triggered Trojan. A trigger that matches "
+        "the reset state only with a rare input pattern passes. "
         "Seeker-Seq v2.0-rc8 and the silicon rc2 set carried such circuits (rc8 stays as the "
         "record). v2.0 has a build gate against them; each offender was removed and replaced by "
         "a new draw of the same cell with the same Trojan count that passes every gate, so the "

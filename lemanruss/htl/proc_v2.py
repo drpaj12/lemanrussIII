@@ -114,16 +114,23 @@ def _copy_gz(src: Path, dst: Path) -> None:
 
 
 def merge_proc(
-    rc3: Path, si: Path, news: dict[str, Path], out: Path, seed: int, datasheet_text: str,
-    release_name: str,
+    rc3: Path, si: Path, news: list[Path], out: Path, seed: int, datasheet_text: str,
+    release_name: str, removed_rc3: set[str] | None = None, removed_si: set[str] | None = None,
 ) -> Json:
-    """Writes the merged release `out` (must not exist)."""
-    ids_rc3 = [str(r["id"]) for r in _rows_of(rc3)]
-    ids_si = [str(r["id"]) for r in _rows_of(si)]
-    new_ids = {core: sorted(str(r["id"]) for r in _rows_of(root)) for core, root in news.items()}
+    """Writes the merged release `out` (must not exist). `removed_rc3` / `removed_si` are logical
+    circuit ids (provenance `logical`) whose circuits, in every form, stay out of the release
+    (they failed the strict four-state gate); `news` are the packaged new circuits."""
+    def keep_ids(root: Path, gone: set[str] | None) -> list[str]:
+        prov0 = _d(_load(root / "answer_key" / "provenance.json"))
+        return [str(r["id"]) for r in _rows_of(root)
+                if not gone or str(_d(prov0[str(r["id"])])["logical"]) not in gone]
+
+    ids_rc3 = keep_ids(rc3, removed_rc3)
+    ids_si = keep_ids(si, removed_si)
+    new_ids = {str(k): sorted(str(r["id"]) for r in _rows_of(root)) for k, root in enumerate(news)}
     start = max(int(i[2:]) for i in ids_rc3) + 1
     todo = [("si", i) for i in sorted(ids_si)] + [
-        (core, i) for core, ids in sorted(new_ids.items()) for i in ids]
+        (k, i) for k, ids in sorted(new_ids.items()) for i in ids]
     fresh = [f"pr{start + n:04d}" for n in range(len(todo))]
     random.Random(f"{seed}:proc-v2-ids").shuffle(fresh)
     rename: dict[tuple[str, str], str] = dict(zip(todo, fresh, strict=True))
@@ -138,13 +145,16 @@ def merge_proc(
     renames: dict[str, object] = {}
     rows: list[Json] = []
 
-    def take(tag: str, root: Path, ident: dict[str, str], logical_prefix: str) -> None:
+    def take(tag: str, root: Path, ident: dict[str, str], logical_prefix: str,
+             only: set[str] | None = None) -> None:
         k = root / "answer_key"
         lab, pr = _d(_load(k / "labels.json")), _d(_load(k / "provenance.json"))
         ra = _d(_load(k / "rareness.json"))
         rn = _d(_load(k / "renames.json"))
         for r in _rows_of(root):
             old = str(r["id"])
+            if only is not None and old not in only:
+                continue
             new = ident.get(old, old)
             _copy_gz(root / str(r["file"]), out_c / f"{new}.blif.gz")
             vsrc = root / "circuits_v" / f"{old}.v.gz"
@@ -169,15 +179,17 @@ def merge_proc(
                 _copy_gz(k / "twins" / f"{old}.blif.gz", out_k / "twins" / f"{new}.blif.gz")
                 shutil.copytree(k / "witness" / old, out_k / "witness" / new)
         for lid, c in _d(_load(k / "catalogue.json")).items():
+            if only is not None and not any(i in only for i in _d(_d(c)["ids"]).values()):
+                continue
             c = dict(_d(c))
             c["ids"] = {f: ident.get(str(i), str(i)) for f, i in _d(c["ids"]).items()}
             c["origin"] = tag
             cat[f"{logical_prefix}{lid}"] = c
 
-    take("rc3", rc3, {}, "")
-    take("si-rc2", si, {i: rename[("si", i)] for i in ids_si}, "s-")
-    for core, root in sorted(news.items()):
-        take("v2-new", root, {i: rename[(core, i)] for i in new_ids[core]}, "")
+    take("rc3", rc3, {}, "", set(ids_rc3))
+    take("si-rc2", si, {i: rename[("si", i)] for i in ids_si}, "s-", set(ids_si))
+    for k, root in enumerate(news):
+        take("v2-new", root, {i: rename[(str(k), i)] for i in new_ids[str(k)]}, "")
     by_form: dict[str, dict[str, int]] = {}
     cells: dict[str, dict[str, dict[str, int]]] = {}
     for p in prov.values():
@@ -208,3 +220,47 @@ def merge_proc(
 
 
 __all__ = ["merge_proc", "package_new", "draw_cell_targets", "cell_counts", "load_new"]
+
+
+def plan_core(
+    core: str, exist: dict[str, tuple[int, int]], new: list[LogicalCircuit], seed: int,
+) -> list[tuple[list[LogicalCircuit], dict[str, str], dict[str, int]]]:
+    """Packages for one core. `exist` maps a form name to the (infected, clean) counts of the
+    released circuits that survived the gates. The gates, lut4 and lut6 cells need
+    a = 100 - released logical circuits new circuits, the silicon cell b = 100 - released silicon
+    circuits; the first min(a, b) new circuits are packaged in all four forms and the rest of the
+    larger side in its forms only. The number of infected circuits of each cell is drawn once from
+    the values 10..70 the released counts allow."""
+    a = N_CELL - sum(exist["gates"])
+    b = N_CELL - sum(exist["silicon"])
+    if len(new) < max(a, b):
+        raise ValueError(f"{core}: {len(new)} new circuits, {max(a, b)} needed")
+    for f in ("lut4", "lut6"):
+        if sum(exist[f]) != sum(exist["gates"]):
+            raise ValueError(f"{core}: released forms differ in size")
+    need = {f: (b if f == "silicon" else a) for f in FORMS}
+    total = {}
+    for f in FORMS:
+        lo, hi = max(10, exist[f][0]), min(70, exist[f][0] + need[f])
+        total[f] = random.Random(f"{seed}:{core}:{f}:ninf").randint(lo, hi) - exist[f][0]
+    m = min(a, b)
+    parts: list[tuple[list[LogicalCircuit], tuple[str, ...]]] = [(new[:m], FORMS)]
+    if a > m:
+        parts.append((new[m:a], FORMS[:3]))
+    elif b > m:
+        parts.append((new[m:b], ("silicon",)))
+    out = []
+    left = dict(total)
+    for idx, (lcs, forms) in enumerate(parts):
+        k = {}
+        for f in forms:
+            size_f = sum(len(p[0]) for p in parts if f in p[1])
+            last = idx == max(i for i, p in enumerate(parts) if f in p[1])
+            kf = left[f] if last else round(total[f] * len(lcs) / size_f)
+            kf = min(kf, len(lcs))
+            left[f] -= kf
+            k[f] = kf
+        out.append((lcs, {BUILD_KEY[f]: f for f in forms}, k))
+    if any(left[f] != 0 for f in FORMS):
+        raise ValueError(f"{core}: infected counts do not fit: {left}")
+    return out

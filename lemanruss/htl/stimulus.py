@@ -99,14 +99,20 @@ def _broadcast(word: int, lane: int, mask: int) -> int:
 
 def seq_stimulus(
     golden: Compiled, circuits: list[Compiled], cycles: int, lanes: int, seed: int,
+    alt_golden: Compiled | None = None, alt: list[bool] | None = None,
 ) -> tuple[list[str], list[str], Json]:
+    """`alt_golden` / `alt`: circuits flagged in `alt` are compared with `alt_golden` instead of
+    `golden` (the silicon circuits start from a state without initial values, so their reference
+    is the mapped silicon golden, not the gate-level one)."""
     names = list(golden.data_inputs)
     mask = (1 << lanes) - 1
     rng = random.Random(seed)
-    sg = _initial_state(golden, mask)
+    refs = [golden] + ([alt_golden] if alt_golden is not None else [])
+    ref_of = [1 if (alt and alt[k]) else 0 for k in range(len(circuits))]
+    sg = [_initial_state(r, mask) for r in refs]
     sc = [_initial_state(c, mask) for c in circuits]
     rows: list[str] = []
-    snaps: list[tuple[dict[str, int], list[dict[str, int]]]] = []
+    snaps: list[tuple[list[dict[str, int]], list[dict[str, int]]]] = []
     stuck = False
     retries = 0
     steps = 0
@@ -117,13 +123,16 @@ def seq_stimulus(
             if RESET.match(n):
                 ins[n] = rng.getrandbits(lanes) & rng.getrandbits(lanes) \
                     & rng.getrandbits(lanes) & rng.getrandbits(lanes)
-        vg = {**ins, **sg}
-        for c_name in golden.clocks:
-            vg[c_name] = 0
-        _step(golden, vg, mask)
+        vgs = []
+        for r, st in zip(refs, sg, strict=True):
+            vg = {n: ins[n] for n in r.data_inputs if n in ins} | st
+            for c_name in r.clocks:
+                vg[c_name] = 0
+            _step(r, vg, mask)
+            vgs.append(vg)
         diff = 0
         vcs = []
-        for c, st in zip(circuits, sc, strict=True):
+        for c, st, ri in zip(circuits, sc, ref_of, strict=True):
             have = set(c.data_inputs)
             vc = {n: ins[n] for n in names if n in have} | st
             for c_name in c.clocks:
@@ -131,7 +140,7 @@ def seq_stimulus(
             _step(c, vc, mask)
             vcs.append(vc)
             for o in golden.outputs:
-                diff |= vg[o] ^ vc[o]
+                diff |= vgs[ri][o] ^ vc[o]
         free = [i for i in range(lanes) if not (diff >> i) & 1]
         if not free:  # every candidate fires: step back one cycle and draw again
             retries += 1
@@ -144,16 +153,36 @@ def seq_stimulus(
         lane = rng.choice(free)
         snaps.append((sg, sc))
         rows.append("".join("1" if (ins[n] >> lane) & 1 else "0" for n in names))
-        ng = _next_state(golden, vg)
-        sg = {q: _broadcast(w, lane, mask) for q, w in ng.items()}
+        sg = [{q: _broadcast(w, lane, mask) for q, w in _next_state(r, vg).items()}
+              for r, vg in zip(refs, vgs, strict=True)]
         sc = [{q: _broadcast(w, lane, mask) for q, w in _next_state(c, vc).items()}
               for c, vc in zip(circuits, vcs, strict=True)]
     stuck = stuck or len(rows) < cycles
-    bad = seq_check(golden, circuits, names, rows)
+    bad = seq_check(golden, circuits, names, rows, alt_golden, alt)
     stats: Json = {"cycles": len(rows), "requested": cycles, "stopped_early": stuck,
                    "candidate_lanes": lanes, "backtracks": retries,
                    "infected_checked": len(circuits), "circuits_differing_on_final": bad}
     return names, rows, stats
+
+
+def seq_check(golden: Compiled, circuits: list[Compiled], names: list[str], rows: list[str],
+              alt_golden: Compiled | None = None, alt: list[bool] | None = None) -> int:
+    """Number of circuits whose outputs differ from their reference's somewhere on the sequence."""
+    def trace(c: Compiled) -> list[tuple[int, ...]]:
+        st = _initial_state(c, 1)
+        out: list[tuple[int, ...]] = []
+        have = set(c.data_inputs)
+        for row in rows:
+            v = {n: int(ch) for n, ch in zip(names, row, strict=True) if n in have} | st
+            for c_name in c.clocks:
+                v[c_name] = 0
+            _step(c, v, 1)
+            out.append(tuple(v[o] for o in golden.outputs))
+            st = _next_state(c, v)
+        return out
+
+    refs = [trace(golden)] + ([trace(alt_golden)] if alt_golden is not None else [])
+    return sum(trace(c) != refs[1 if (alt and alt[k]) else 0] for k, c in enumerate(circuits))
 
 
 RESET_TRIGGER_MAX_P = 1e-2  # the loosest rareness band of the release (Comb p < 1e-2)
@@ -204,26 +233,6 @@ def reset_active(golden: Compiled, circuits: list[Compiled], lanes: int, seed: i
         if d == mask:
             bad.append(k)
     return bad
-
-
-def seq_check(golden: Compiled, circuits: list[Compiled], names: list[str],
-              rows: list[str]) -> int:
-    """Number of circuits whose outputs differ from the golden's somewhere on the sequence."""
-    def trace(c: Compiled) -> list[tuple[int, ...]]:
-        st = _initial_state(c, 1)
-        out: list[tuple[int, ...]] = []
-        have = set(c.data_inputs)
-        for row in rows:
-            v = {n: int(ch) for n, ch in zip(names, row, strict=True) if n in have} | st
-            for c_name in c.clocks:
-                v[c_name] = 0
-            _step(c, v, 1)
-            out.append(tuple(v[o] for o in golden.outputs))
-            st = _next_state(c, v)
-        return out
-
-    ref = trace(golden)
-    return sum(trace(c) != ref for c in circuits)
 
 
 def to_text(names: list[str], rows: list[str]) -> str:
