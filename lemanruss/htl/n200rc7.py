@@ -248,14 +248,17 @@ def build_base_rc7(job: tuple[str, Path, Path, int, int]) -> Json:
 
 def run_family_rc7(
     bases: list[Path], out: Path, seed: int = 0, workers: int = 1, max_gates: int = 10**9,
+    first_index: int = 0,
 ) -> list[Json]:
-    """`n200run.run_family`, for `build_base_rc7` (Seeker-Seq only)."""
+    """`n200run.run_family`, for `build_base_rc7` (Seeker-Seq only). `first_index` shifts the id
+    blocks (rc8 builds the OpenCores bases after the 36 rc7 blocks, so ids never repeat)."""
     import multiprocessing
 
     from lemanruss.htl.n200run import BLOCK, assemble, gate_count
 
     order = sorted(bases, key=lambda p: (gate_count(p), p.stem))
-    jobs = [("Seeker-Seq", p, out, i * BLOCK + 1, seed) for i, p in enumerate(order)
+    jobs = [("Seeker-Seq", p, out, (first_index + i) * BLOCK + 1, seed)
+            for i, p in enumerate(order)
             if gate_count(p) <= max_gates]
     skipped = [p.stem for p in order if gate_count(p) > max_gates]
     (out / "answer_key").mkdir(parents=True, exist_ok=True)

@@ -12,7 +12,7 @@ Stages, in order:
 4. **Gates and releases:** witness replay in Odin III, equivalence by ABC to the source, label-leak gates, then datasheets and checksums.
 5. **Detector baselines and scoring:** a submission format and a scorer that does not publish the answer key.
 
-Releases: Seeker-Comb v2.0-rc5 (5809 circuits, 31 bases), Seeker-Seq v2.0-rc7 (10503 circuits, 36 bases; magic-number triggers, no Trojan
+Releases: Seeker-Comb v2.0-rc5 (5809 circuits, 31 bases), Seeker-Seq v2.0-rc8 (11005 circuits, 38 bases: the 36 rc7 bases unchanged plus OpenCores ca_prng and i2c; rc7 superseded by rc8 as a superset; magic-number triggers, no Trojan
 flip-flops) and a Seeker-Proc pilot3 of four circuits. Seeker-Seq v2.0-rc6 (10735 circuits) is superseded by rc7: on rc6 the flip-flop count
 alone separated the labels (AUROC 0.948) because the counter and pattern triggers and the energy ring add flip-flops; rc7 adds none (exact
 flip-flop equality with the golden before ABC; AUROC 0.500 after), and the class-only GNNs that reached 0.98 to 1.00 on Seq rc5 / rc6 fall to
@@ -34,7 +34,7 @@ circuits are Trojans to detect. Design and numbers: `docs/specs/`, `docs/results
 | Seeker v2.0 families: Seeker-Comb and Seeker-Seq (a golden and three mapping sets per base: LUT k=4, LUT k=6, AND/OR/NOT gates; 10% to 70% infected, one to three Trojans) | works | `lemanruss family`, `lemanruss n200`; `lemanruss/htl/families.py`, `n200*.py` |
 | Obfuscation: ABC restructurings (18 scripts) and mapping to the three sets, so structure does not betray the Trojan | works | `lemanruss restructure`, `lemanruss/htl/obfuscate.py`, `restructure.py` |
 | Verification and release gates: witness replay in Odin III, equivalence by ABC to the source and to the golden with triggers off, label-leak gates (rejected draws are listed, never shipped) | works | `lemanruss verify`, `family-verify`, `release-report`; `lemanruss/htl/relverify.py` |
-| Releases: Seeker-Comb v2.0-rc5 (5809 circuits, 31 bases) and Seeker-Seq v2.0-rc7 (10503 circuits, 36 bases) with datasheets and checksums; earlier candidates (rc1, rc2, rc4, Seq rc5, Seq rc6 (superseded by rc7: Trojan flip-flops separated its labels), Proc pilot, pilot2) kept under `releases/` as superseded | released | `releases/`, `lemanruss release` |
+| Releases: Seeker-Comb v2.0-rc5 (5809 circuits, 31 bases) and Seeker-Seq v2.0-rc8 (11005 circuits, 38 bases; rc7 kept under `releases/`) with datasheets and checksums; earlier candidates (rc1, rc2, rc4, Seq rc5, Seq rc6 (superseded by rc7: Trojan flip-flops separated its labels), Proc pilot, pilot2) kept under `releases/` as superseded | released | `releases/`, `lemanruss release` |
 | Seeker-Proc: processor images (RV32I) lowered to netlists, pilot3 with four circuits (magic-word triggers only, no added flip-flop) | released (pilot) | `releases/seeker-proc-v2.0-pilot3`, `lemanruss/htl/proc_*.py`, `rv32i.py` |
 | Seeker-Si v2.0-rc1: 100 standard-cell (sky130_fd_sc_hd) circuits on mmuart, simple_spi, verilog_cordic_core (34 clean, 66 infected, 103 Trojans). A NEW set with its own bases: not the same benchmarks as Seeker comb/seq/proc, do not compare per base | released (rc1) | `releases/seeker-si-v2.0-rc1`, `docs/results-si-rc1.md`, `lemanruss/htl/si_set.py` |
 | Rareness report: per-circuit and pooled tables of trigger activation probability | works | `lemanruss/htl/rareness.py`, `answer_key/rareness.md` in each release |

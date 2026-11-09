@@ -14,6 +14,7 @@ from lemanruss.htl.families import ADDS, LINEAGE, VERSION
 from lemanruss.htl.n200 import active_sets, build_base
 from lemanruss.htl.n200check import Json
 from lemanruss.htl.n200plan import TSpec, trojan_of
+from lemanruss.htl.seqoc import source_of
 
 BLOCK = 100 * len(active_sets()) + 1  # ids reserved per base: golden + the sets of 100
 
@@ -192,8 +193,9 @@ def tables(root: Path) -> list[str]:
     trojans: dict[str, list[Json]] = json.loads((key / "trojans.json").read_text(encoding="utf-8"))
     fails: list[Json] = json.loads((key / "failures.json").read_text(encoding="utf-8"))
     out = ["### Bases and sets", "",
-           "| base | gates | K4 drawn / infected / clean | K6 drawn / infected / clean | "
-           "G drawn / infected / clean |", "|---|---|---|---|---|"]
+           "| base | source | gates | K4 drawn / infected / clean | "
+           "K6 drawn / infected / clean | G drawn / infected / clean |",
+           "|---|---|---|---|---|---|"]
     for base, s in sorted(sets.items(), key=lambda kv: (int(str(kv[1].get("gates") or 0)),
                                                          kv[0])):
         ps = s["sets"]
@@ -204,7 +206,7 @@ def tables(root: Path) -> list[str]:
             cells.append("- " if v is None else
                          f"{v['n_infected_drawn']} / {len(v['infected_ids'])} / "
                          f"{len(v['clean_ids'])}")
-        out.append(f"| {base} | {s.get('gates')} | " + " | ".join(cells) + " |")
+        out.append(f"| {base} | {source_of(base)} | {s.get('gates')} | " + " | ".join(cells) + " |")
     for name in ("K4", "K6", "G"):
         rs = [r for r in recs if scripts[str(r["circuit"])]["set"] == name]
         circ = [c for c, v in scripts.items() if v["set"] == name and c in trojans]
@@ -219,7 +221,8 @@ def tables(root: Path) -> list[str]:
         out += ["", "Payload mix: " + ", ".join(f"{k} {v}" for k, v in sorted(mix.items())), "",
                 "| trigger | band | Trojans | stat | min | median | max |",
                 "|---|---|---|---|---|---|---|"]
-        for trig in ("comb", "ctr", "pat"):
+        for trig in sorted({str(r["trigger"]) for r in rs
+                            if "p_fire_within" in r or r["trigger"] == "comb"}):
             for band in sorted({str(r["target_band"]) for r in rs if r["trigger"] == trig}):
                 sel = [r for r in rs if r["trigger"] == trig and r["target_band"] == band]
                 if trig == "comb":
