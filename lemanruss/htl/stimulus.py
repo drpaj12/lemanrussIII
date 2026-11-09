@@ -106,9 +106,12 @@ def seq_stimulus(
     sg = _initial_state(golden, mask)
     sc = [_initial_state(c, mask) for c in circuits]
     rows: list[str] = []
+    snaps: list[tuple[dict[str, int], list[dict[str, int]]]] = []
     stuck = False
     retries = 0
-    for _t in range(cycles):
+    steps = 0
+    while len(rows) < cycles and steps < cycles * 40:
+        steps += 1
         ins = {n: rng.getrandbits(lanes) for n in names}
         for n in names:
             if RESET.match(n):
@@ -121,7 +124,8 @@ def seq_stimulus(
         diff = 0
         vcs = []
         for c, st in zip(circuits, sc, strict=True):
-            vc = {n: ins[n] for n in names if n in set(c.data_inputs)} | st
+            have = set(c.data_inputs)
+            vc = {n: ins[n] for n in names if n in have} | st
             for c_name in c.clocks:
                 vc[c_name] = 0
             _step(c, vc, mask)
@@ -129,21 +133,52 @@ def seq_stimulus(
             for o in golden.outputs:
                 diff |= vg[o] ^ vc[o]
         free = [i for i in range(lanes) if not (diff >> i) & 1]
-        if not free:
-            stuck = True
-            break
-        lane = free[0]
-        retries += lane
+        if not free:  # every candidate fires: step back one cycle and draw again
+            retries += 1
+            if not snaps:
+                stuck = True
+                break
+            sg, sc = snaps.pop()
+            rows.pop()
+            continue
+        lane = rng.choice(free)
+        snaps.append((sg, sc))
         rows.append("".join("1" if (ins[n] >> lane) & 1 else "0" for n in names))
         ng = _next_state(golden, vg)
         sg = {q: _broadcast(w, lane, mask) for q, w in ng.items()}
         sc = [{q: _broadcast(w, lane, mask) for q, w in _next_state(c, vc).items()}
               for c, vc in zip(circuits, vcs, strict=True)]
+    stuck = stuck or len(rows) < cycles
     bad = seq_check(golden, circuits, names, rows)
     stats: Json = {"cycles": len(rows), "requested": cycles, "stopped_early": stuck,
-                   "candidate_lanes": lanes, "redrawn_candidates": retries,
+                   "candidate_lanes": lanes, "backtracks": retries,
                    "infected_checked": len(circuits), "circuits_differing_on_final": bad}
     return names, rows, stats
+
+
+def reset_active(golden: Compiled, circuits: list[Compiled], lanes: int, seed: int) -> list[int]:
+    """Indices of circuits whose outputs differ from the golden's at the reset state for every
+    one of `lanes` random input vectors: a Trojan whose magic value is the reset state itself
+    fires at cycle 0 whatever the inputs, so no stimulus from reset can keep it silent."""
+    rng = random.Random(f"{seed}:reset")
+    mask = (1 << lanes) - 1
+    ins = {n: rng.getrandbits(lanes) for n in golden.data_inputs}
+    vg = {**ins, **_initial_state(golden, mask)}
+    for c_name in golden.clocks:
+        vg[c_name] = 0
+    _step(golden, vg, mask)
+    bad: list[int] = []
+    for k, c in enumerate(circuits):
+        vc = {n: ins[n] for n in c.data_inputs} | _initial_state(c, mask)
+        for c_name in c.clocks:
+            vc[c_name] = 0
+        _step(c, vc, mask)
+        d = 0
+        for o in golden.outputs:
+            d |= vg[o] ^ vc[o]
+        if d == mask:
+            bad.append(k)
+    return bad
 
 
 def seq_check(golden: Compiled, circuits: list[Compiled], names: list[str],

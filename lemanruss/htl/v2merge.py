@@ -121,7 +121,7 @@ def reason_summary(failures: list[object], base: str, set_name: str) -> str:
     seen: dict[str, int] = {}
     for f in failures:
         f = _as_dict(f)
-        if f["base"] == base and f["set"] in (set_name, "all"):
+        if f["base"] == base and (set_name == "all" or f["set"] in (set_name, "all")):
             r = str(f["reason"])
             for pre in ("insert: ", "obfuscated circuit vs its source"):
                 if r.startswith(pre):
@@ -403,3 +403,50 @@ def merge_family(
     return {"release": name, "circuits": len(files), "clean": n_clean,
             "infected": len(files) - n_clean, "bases": len(bases),
             "cells": len(kept), "dropped": dropped}
+
+
+def v2_datasheet(family: str, name: str, root: Path, tools: Tools, odin_version: str,
+                 stimulus_md: str) -> str:
+    """Datasheet of a merged release: contents, per-base table, dropped cells with causes."""
+    from lemanruss.htl.n200run import tables
+    from lemanruss.htl.seqoc import source_of
+
+    man = _as_dict(_load(root / "manifest.json"))
+    counts = _as_dict(man["counts"])
+    dropped = _as_list(_load(root / "answer_key" / "dropped_cells.json"))
+    labels = _as_dict(_load(root / "answer_key" / "labels.json"))
+    n_inf = sum(1 for v in labels.values() if v is not None)
+    by_base = _as_dict(counts["by_base"])
+    lines = [
+        f"# {name} datasheet", "",
+        f"Family: {family}. Version 2.0 (supersedes the release candidates). Produced by Leman "
+        "Russ III (Yggdrasil III). Defensive hardware-Trojan detection research; the circuits "
+        "are Trojans to detect, nothing here is meant to be deployed.", "",
+        "## Contents", "",
+        f"- circuits: {counts['circuits']} in `circuits/<id>.blif.gz`, {n_inf} infected and "
+        f"{int(str(counts['circuits'])) - n_inf} clean, opaque ids; silicon cell Verilog in "
+        "`circuits_v/<id>.v.gz`.",
+        f"- benchmarks: {len(by_base)}; per benchmark a golden (plus a silicon golden), and every "
+        "target with exactly 100 circuits: K4 (LUT k=4), K6 (LUT k=6), G (AND/OR/NOT gates), "
+        "S (sky130_fd_sc_hd silicon). A random 10 to 70 of each 100 are infected with 1 to 3 "
+        "Trojans (P = 0.5, 0.3, 0.2). A target short of 100 distinct, gated circuits is not "
+        "shipped (below).",
+        "- rc circuits of the earlier candidates are kept byte for byte (same ids); circuits "
+        "added to fill cells were built with the same pipeline and gates, distinct from every "
+        "earlier circuit of the base; silicon circuits are those of Seeker-Si rc2 under new ids.",
+        "- answer key: `answer_key/` (labels, sets, Trojans, scripts, rareness, witnesses, "
+        "`pre/`, `dropped_cells.json`); a detector must not read it.", "",
+        "Circuits per benchmark: " + ", ".join(f"{b} {n}" for b, n in sorted(by_base.items())), "",
+        "## Dropped cells (never padded, distinctness never relaxed)", "",
+        "| benchmark | target | built | cause |", "|---|---|---|---|"]
+    for d in dropped:
+        d = _as_dict(d)
+        lines.append(f"| {d['base']} | {d['set']} | {d['circuits_built']} | {d['cause']} |")
+    lines += ["", stimulus_md, "", "## Tools", "",
+              f"- Odin III {odin_version} builds the added circuits (rc circuits: "
+              f"{tools.odin3_build_pin}); ABC: {tools.abc}.", "",
+              "## Bases", "",
+              ", ".join(f"{b} ({source_of(b)})" for b in sorted(by_base)), "",
+              "## Tables", "", *tables(root), "",
+              "## Check", "", "`sha256sum -c SHA256SUMS`, then `lemanruss verify <dir>`.", ""]
+    return "\n".join(lines)
