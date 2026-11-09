@@ -123,14 +123,14 @@ dfflibmap sky130hd; write_blif --gates-as-names`; no Yosys; Odin III is `build/r
   against its own source, and the gate used is recorded per circuit (`answer_key/build_meta.json`).
   Result: mips_16, mcu and picorv32 strict for every circuit; darkriscv init-reset for every circuit
   (its source has 815 flip-flops with initial value 0, 22 with 1 and 1,195 unknown).
-- Place and route (`si_pnr_set`): about 10 % of each base, label-stratified, every Proc base,
-  smallest first; flow = `odin3/tools/silicon/openroad_flow.tcl` unchanged (utilisation 25 %), 30
-  minute cap, one retry at 18 %, and a stall rule: a log silent for 5 minutes at DRT-0179 `Init gr pin
-  query` is a hang and is recorded as a flow limit (`stall`) with the cell count. Diagnosis of the
-  stalls (one stalled Comb circuit, 1,078 cells): a larger die (utilisation 10), looser IO pin
-  spacing, default global-route iterations and a global-routing layer adjustment all still stall;
-  routing from metal 2 upward fails (GRT-0118 or DRT-0155). No flow parameter changed. IO pin density
-  does not separate stalled from finished circuits.
+- Place and route (`si_pnr_set`): about 10 % of each Comb and Seq base (label-stratified), 30 % of each Proc base
+  (every base represented), smallest first; flow = `odin3/tools/silicon/openroad_flow.tcl` unchanged (utilisation 25 %),
+  60 minute wall cap per circuit, retry at 18 % utilisation only after a flow error (a cap-out is recorded as a flow limit
+  with its cell count and not retried: retries never helped; deviation from the controller's one-retry rule, logged). A
+  silent-log stall rule (300 s at `DRT-0179`) was tried and switched off: it killed a 5,758-cell run that routes in 985 s.
+  Diagnosis of the hangs (one Comb circuit, 1,078 cells): IO density does not separate them; a larger die (utilisation 10),
+  looser pin spacing, default global-route iterations and a global-routing layer adjustment all still hang; routing from
+  metal 2 upward fails (GRT-0118 or DRT-0155). No flow parameter changed. Results by size bucket: `docs/results-si-rc2.md`.
 - Detectors: Proc as rc3 (`procrun`, 50 epochs, no training cap, seeds 0, 1, 2, range check);
   Comb and Seq as the localisation runs of PR #3 (12 epochs, batch 32, training cap 1,500,
   `locrun` for the localising detectors and `detect.run --splits base` for the others).
