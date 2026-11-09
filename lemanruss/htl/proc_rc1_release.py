@@ -30,9 +30,11 @@ from lemanruss.htl.proc_rareness import magic_match_probability, word_bits
 from lemanruss.htl.proc_release import LEAK_TOKENS, NAME_VOCAB, check_name_vocabulary
 from lemanruss.htl.proc_witness import alu_witness_words
 from lemanruss.htl.release import gz_bytes, read_blif_gz, scrub_group, sha256_file, write_sha256sums
+from lemanruss.htl.si_cells import blif_to_verilog
 
 # build-time form key (proc_build.FORMS) -> released form name
 FORM_NAMES = {"gates": "gates", "k4": "lut4", "k6": "lut6"}
+SI_FORM_NAMES = {"si": "silicon"}  # Seeker-Si rc2 Proc release: the silicon form only
 RELEASE_NAME = "seeker-proc-v2.0-rc1"
 N_INF_RANGE = (10, 70)
 
@@ -71,9 +73,11 @@ def draw_infected(n: int, rng: random.Random) -> set[int]:
 def package_proc_rc1(
     circuits: list[LogicalCircuit], out_dir: Path, seed: int, release_name: str = RELEASE_NAME,
     notes: dict[str, object] | None = None, odin3_bin: Path | None = None,
+    form_names: dict[str, str] | None = None,
 ) -> dict[str, object]:
     """`odin3_bin` set: every file passes the release gate (`proc_gate`) before it is written,
     or `GateError` stops the packaging."""
+    fnames = form_names or FORM_NAMES
     out_dir.mkdir(parents=True, exist_ok=False)
     cdir, adir = out_dir / "circuits", out_dir / "answer_key"
     cdir.mkdir()
@@ -83,13 +87,13 @@ def package_proc_rc1(
     rng = random.Random(f"proc-rc1:{seed}")
 
     # one slot per (form, logical circuit); ids are a seeded shuffle of 1..N
-    slots = [(f, i) for f in FORM_NAMES.values() for i in range(len(circuits))]
+    slots = [(f, i) for f in fnames.values() for i in range(len(circuits))]
     order = list(range(1, len(slots) + 1))
     rng.shuffle(order)
     ids = {slot: f"pr{n:04d}" for slot, n in zip(slots, order, strict=True)}
-    build_key = {v: k for k, v in FORM_NAMES.items()}
+    build_key = {v: k for k, v in fnames.items()}
 
-    infected_idx = {f: draw_infected(len(circuits), rng) for f in FORM_NAMES.values()}
+    infected_idx = {f: draw_infected(len(circuits), rng) for f in fnames.values()}
     labels: dict[str, str | None] = {}
     prov: dict[str, dict[str, object]] = {}
     manifest_rows: list[dict[str, object]] = []
@@ -100,11 +104,11 @@ def package_proc_rc1(
         catalogue[lc.logical_id] = {
             "base": lc.base, "kinds": lc.kinds,
             "magic_words": [f"0x{w:0{word_bits(lc.base) // 4}x}" for w in lc.magic_words],
-            "ids": {f: ids[(f, i)] for f in FORM_NAMES.values()},
-            "infected_in": [f for f in FORM_NAMES.values() if i in infected_idx[f]],
+            "ids": {f: ids[(f, i)] for f in fnames.values()},
+            "infected_in": [f for f in fnames.values() if i in infected_idx[f]],
         }
 
-    for form in FORM_NAMES.values():
+    for form in fnames.values():
         bk = build_key[form]
         for i, lc in enumerate(circuits):
             cid = ids[(form, i)]
@@ -139,6 +143,10 @@ def package_proc_rc1(
                 raise GateError(f"{cid}: " + "; ".join(problems))
             data = gz_bytes(text)
             (cdir / f"{cid}.blif.gz").write_bytes(data)
+            if form == "silicon":  # cell Verilog next to the BLIF, same net names
+                (out_dir / "circuits_v").mkdir(exist_ok=True)
+                (out_dir / "circuits_v" / f"{cid}.v.gz").write_bytes(
+                    gz_bytes(blif_to_verilog(text)))
             manifest_rows.append({"id": cid, "base": lc.base, "file": f"circuits/{cid}.blif.gz",
                                   "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
             labels[cid] = lc.logical_id if infected else None
@@ -174,7 +182,8 @@ def package_proc_rc1(
     dump(adir / "renames.json", renames)
     dump(adir / "mix_by_form.json", by_form)
     (out_dir / "DATASHEET.md").write_text(
-        datasheet(release_name, manifest, by_form, circuits, notes or {}), encoding="utf-8")
+        datasheet(release_name, manifest, by_form, circuits, notes or {},
+                  list(fnames.values())), encoding="utf-8")
     write_sha256sums(out_dir)
     return {"release": release_name, "circuits": len(manifest_rows), "by_form": by_form}
 
@@ -182,6 +191,7 @@ def package_proc_rc1(
 def datasheet(
     name: str, manifest: dict[str, object], by_form: dict[str, dict[str, int]],
     circuits: list[LogicalCircuit], notes: dict[str, object],
+    forms: list[str] | None = None,
 ) -> str:
     counts = manifest["counts"]
     assert isinstance(counts, dict)
@@ -192,14 +202,20 @@ def datasheet(
         "(Yggdrasil III). Defensive hardware-Trojan detection research; the circuits are Trojans "
         "to detect, nothing here is meant to be deployed.", "",
         "## What it is", "",
-        f"{counts['circuits']} circuits: the same {len(circuits)} logical circuits in three "
-        "forms (gates: AND/OR/NOT gate netlist; lut4 and lut6: ABC `if` mapped to 4- and "
-        "6-input LUTs), each form a gzip BLIF (`circuits/<id>.blif.gz`, zero timestamp, no "
-        "comment lines). Ids are opaque and shuffled across forms and bases. A detector is not "
-        "told whether a circuit is infected.", "",
+        (f"{counts['circuits']} circuits: {len(circuits)} logical circuits in the silicon form "
+         "(sky130_fd_sc_hd standard cells, ABC `--gates sky130hd` plus `dfflibmap`), each a "
+         "gzip BLIF (`circuits/<id>.blif.gz`, one `.names` cover per cell) and cell Verilog "
+         "(`circuits_v/<id>.v.gz`, same net names). Ids are opaque and shuffled across bases. "
+         "A detector is not told whether a circuit is infected."
+         if forms == ["silicon"] else
+         f"{counts['circuits']} circuits: the same {len(circuits)} logical circuits in three "
+         "forms (gates: AND/OR/NOT gate netlist; lut4 and lut6: ABC `if` mapped to 4- and "
+         "6-input LUTs), each form a gzip BLIF (`circuits/<id>.blif.gz`, zero timestamp, no "
+         "comment lines). Ids are opaque and shuffled across forms and bases. A detector is not "
+         "told whether a circuit is infected."), "",
         "| form | clean | infected |", "|---|---|---|",
     ]
-    for f in FORM_NAMES.values():
+    for f in (forms or list(FORM_NAMES.values())):
         d = by_form[f]
         lines.append(f"| {f} | {d['clean']} | {d['infected']} |")
     lines += [
@@ -335,4 +351,4 @@ def read_blif_gz_bytes(path: Path) -> str:
 
 
 __all__ = ["LogicalCircuit", "load_logical", "draw_infected", "package_proc_rc1", "datasheet",
-           "verify_proc_rc1", "FORM_NAMES", "RELEASE_NAME"]
+           "verify_proc_rc1", "FORM_NAMES", "SI_FORM_NAMES", "RELEASE_NAME"]

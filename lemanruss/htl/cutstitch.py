@@ -269,6 +269,8 @@ def cut_and_stitch(
         merged_blocks += _private(ci, co, cb, f"{cs.label}_")
         scripts[cs.label] = cscript
     merged = ob.render(list(inputs), list(outputs), merged_blocks)
+    if kind == "silicon":  # the buffer-free rule also covers the nets the pieces were joined on
+        merged = ob.strip_buffers(merged)
     ren: dict[str, str] = {}
     final = ob.finalize(merged, rng, ren)
     # Where each ring bit went (answer key only): the energy witness reads these nets.
