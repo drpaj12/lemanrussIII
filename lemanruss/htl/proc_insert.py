@@ -51,6 +51,8 @@ as a deferred axis, not attempted and silently skipped.
 
 from __future__ import annotations
 
+from lemanruss.htl.procmask import masking_on
+
 MCU_FI_CONNECTION = "  .next_PC_select(next_PC_select),"
 MCU_FI_CONNECTION_PATCHED = "  .next_PC_select(__htl_pc_mux),"
 
@@ -337,6 +339,8 @@ PICO_ALU_LINE_PATCHED = (
 )
 
 
+
+
 def _kinded_triggers_decl(
     magic_words: list[int], kinds: list[str], sample_wire: str, valid_wire: str | None, *,
     force_inactive: bool = False, reset_active: str | None = None,
@@ -357,7 +361,7 @@ def _kinded_triggers_decl(
     for kind in PAYLOAD_KINDS:
         matched = [n for n, k in zip(names, kinds, strict=True) if k == kind]
         expr = " | ".join(matched) if matched else "1'b0"
-        if matched and reset_active:
+        if matched and reset_active and masking_on():
             # v2.0 masking rule: no payload acts while the core's own reset is active, so the
             # host's hold logic sees its original signals and its registers load known values
             # (a trigger that reads a no-reset register would otherwise put x into a hold path)
