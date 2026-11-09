@@ -17,6 +17,7 @@ import argparse
 import gzip
 import json
 import math
+import os
 import random
 import shutil
 from pathlib import Path
@@ -24,7 +25,7 @@ from pathlib import Path
 from lemanruss.htl import si_pnr
 from lemanruss.seedsrc import release_seed
 
-ODIN_ROOT = Path("/home/jamiespa/odin3-ws/odin3")
+ODIN_ROOT = Path(os.environ.get("ODIN3_ROOT", str(Path.home() / "odin3-ws" / "odin3")))
 FRACTION = 0.10
 
 

@@ -19,7 +19,8 @@ CAP_S = 3600  # wall cap per attempt (controller 2026-11-08; 10-11k cell cores t
 # finished in 985 s when rerun without it.
 STALL_S = CAP_S
 UTILS = (25, 18)  # percent: first try, retry
-TOOLS = Path("/home/jamiespa/odin3-ws/work/tools")
+# Root from the environment (default ~/odin3-ws layout): no home path is committed.
+TOOLS = Path(os.environ.get("LEMANRUSS_TOOLS", str(Path.home() / "odin3-ws" / "work" / "tools")))
 
 
 def _rss_mb(path: Path) -> int:
