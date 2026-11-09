@@ -221,7 +221,8 @@ def tables(root: Path) -> list[str]:
         out += ["", "Payload mix: " + ", ".join(f"{k} {v}" for k, v in sorted(mix.items())), "",
                 "| trigger | band | Trojans | stat | min | median | max |",
                 "|---|---|---|---|---|---|---|"]
-        for trig in sorted({str(r["trigger"]) for r in rs}):
+        for trig in sorted({str(r["trigger"]) for r in rs
+                            if "p_fire_within" in r or r["trigger"] == "comb"}):
             for band in sorted({str(r["target_band"]) for r in rs if r["trigger"] == trig}):
                 sel = [r for r in rs if r["trigger"] == trig and r["target_band"] == band]
                 if trig == "comb":

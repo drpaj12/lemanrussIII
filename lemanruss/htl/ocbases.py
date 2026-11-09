@@ -145,8 +145,8 @@ def _apply_policy(d: OcDesign) -> OcDesign:
                        "1984 flip-flops)")
     if d.name in _COPYLEFT:
         return replace(d, admitted=False, category="licence: copyleft", notes=d.reason,
-                       reason=f"copyleft licence ({d.licence.split(' per')[0].split(' (')[0]}); "
-                       "left out, licence noted")
+                       reason=f"{d.licence.split(' per')[0].split(' (')[0]}, left out with the "
+                       "licence noted")
     if not d.admitted:
         cat = "licence: none stated" if d.licence.startswith("none stated") else "memory"
         return replace(d, category=cat)
