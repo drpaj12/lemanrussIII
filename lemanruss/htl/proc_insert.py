@@ -308,6 +308,15 @@ DARK_XRES_LINE_KINDED_PATCHED = "        XRES <= RES || __htl_trigger_reset;"
 # darkriscv's XIDATA.
 PICO_TRIGGER_SAMPLE = "next_insn_opcode"
 PICO_CLOCK = "clk"
+# v2.0 (four-state): next_insn_opcode has no reset and is x until the first fetch completes, which
+# would put x into the stall (decoder_trigger) and reset (FSM branch) paths of the host. The
+# reset and stall triggers therefore read the instruction bus in the cycle the fetch is valid
+# (mem_valid is a reset register); the alu trigger still reads next_insn_opcode, whose decode
+# flags are known when it matters.
+PICO_FETCH_VALID = "mem_valid && mem_ready && mem_instr"
+PICO_PER_KIND: dict[str, tuple[str, str | None]] = {
+    "reset": ("mem_rdata", PICO_FETCH_VALID), "stall": ("mem_rdata", PICO_FETCH_VALID),
+    "alu": (PICO_TRIGGER_SAMPLE, None)}
 
 # Reset payload: the FSM's own `if (!resetn) begin ... end else case (cpu_state) ...` branch
 # (single `always @(posedge clk)` block controlling reg_pc/reg_next_pc/cpu_state and friends).
@@ -344,8 +353,12 @@ PICO_ALU_LINE_PATCHED = (
 def _kinded_triggers_decl(
     magic_words: list[int], kinds: list[str], sample_wire: str, valid_wire: str | None, *,
     force_inactive: bool = False, reset_active: str | None = None,
+    per_kind: dict[str, tuple[str, str | None]] | None = None,
 ) -> tuple[str, list[str]]:
-    """Like `_independent_triggers_decl`, plus three combined wires (`__htl_trigger_reset`,
+    """`per_kind` maps a payload kind to its own (sample wire, valid qualifier): a kind whose
+    trigger would read a register that is x until its first load (picorv32 `next_insn_opcode`)
+    reads the bus data in the cycle it is valid instead.
+    Like `_independent_triggers_decl`, plus three combined wires (`__htl_trigger_reset`,
     `__htl_trigger_stall`, `__htl_trigger_alu`), each the OR of the per-Trojan trigger wires whose
     own `kinds[i]` matches (brief Continuation 3 step 2: "kinds drawn per Trojan"); a kind with no
     Trojan this circuit is wired to `1'b0`, so every payload site can always read its own combined
@@ -355,8 +368,18 @@ def _kinded_triggers_decl(
     bad = [k for k in kinds if k not in PAYLOAD_KINDS]
     if bad:
         raise ValueError(f"kind must be one of {PAYLOAD_KINDS}, got {bad}")
-    decl, names = _independent_triggers_decl(
-        magic_words, sample_wire, valid_wire, force_inactive=force_inactive)
+    if per_kind is None:
+        decl, names = _independent_triggers_decl(
+            magic_words, sample_wire, valid_wire, force_inactive=force_inactive)
+    else:
+        names = [f"__htl_trigger_{i}" for i in range(len(magic_words))]
+        rows = []
+        for n, w, k in zip(names, magic_words, kinds, strict=True):
+            smp, val = per_kind[k]
+            gate = f"{val} && " if val else ""
+            rows.append(f"  wire {n} = 1'b0;" if force_inactive
+                        else f"  wire {n} = {gate}({smp} == 32'h{w:08x});")
+        decl = "\n".join(rows) + "\n  wire __htl_trigger = " + " | ".join(names) + ";\n"
     lines = [decl.rstrip("\n")]
     for kind in PAYLOAD_KINDS:
         matched = [n for n, k in zip(names, kinds, strict=True) if k == kind]
@@ -442,7 +465,8 @@ def insert_picorv32_kinded_multitrojan(
     patched = patched.replace(PICO_ALU_LINE, PICO_ALU_LINE_PATCHED)
     decl, names = _kinded_triggers_decl(
         magic_words, kinds, PICO_TRIGGER_SAMPLE, None, force_inactive=force_inactive,
-        reset_active="!resetn")
+        reset_active="!resetn" if masking_on() else None,
+        per_kind=PICO_PER_KIND if masking_on() else None)
     # picorv32.v holds several modules (picorv32, picorv32_regs, picorv32_pcpi_mul, ...,
     # picorv32_axi, picorv32_wb); `str.rindex("endmodule")` (every other inserter in this file
     # uses it, safe there -- their upstream files hold exactly one module) would land the new
