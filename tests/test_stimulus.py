@@ -7,6 +7,8 @@ import unittest
 from lemanruss.htl.stimulus import (
     comb_stimulus,
     compile_text,
+    reset_trigger_hit,
+    reset_trigger_prob,
     seq_check,
     seq_stimulus,
     to_text,
@@ -53,6 +55,29 @@ class SeqStimulus(unittest.TestCase):
         self.assertEqual(seq_check(g, [t], names, rows), 0)
         # the unfiltered check does detect a differing circuit
         self.assertEqual(seq_check(g, [t], names, ["11"] * 6), 1)
+
+
+class ResetGate(unittest.TestCase):
+    def test_threshold_both_sides(self) -> None:
+        # FF-only trigger matching the reset state (q = 0): probability 1, rejected
+        ff = (".model top\n.inputs x\n.outputs y\n.latch x q 2\n.names q t\n0 1\n"
+              ".names x y\n1 1\n.end\n")
+        self.assertTrue(reset_trigger_hit(compile_text(ff), ["t"], 1 << 12))
+        # reset-matching FF literal plus 3 input literals: p = 1/8, rejected
+        k3 = (".model top\n.inputs a b c\n.outputs y\n.latch a q 2\n"
+              ".names q a b c t\n0111 1\n.names a y\n1 1\n.end\n")
+        self.assertTrue(reset_trigger_hit(compile_text(k3), ["t"], 1 << 14))
+        # reset-matching FF literal plus 10 input literals: p = 2^-10 < 1e-2, passes
+        names = " ".join(f"i{k}" for k in range(10))
+        k10 = (f".model top\n.inputs {names}\n.outputs y\n.latch i0 q 2\n"
+               f".names q {names} t\n0" + "1" * 10 + " 1\n.names i0 y\n1 1\n.end\n")
+        comp = compile_text(k10)
+        self.assertFalse(reset_trigger_hit(comp, ["t"], 1 << 16))
+        self.assertLess(reset_trigger_prob(comp, ["t"], 1 << 16), 1e-2)
+        # a trigger that needs q = 1 is low in the reset state
+        hi = (".model top\n.inputs x\n.outputs y\n.latch x q 2\n.names q x u\n11 1\n"
+              ".names x y\n1 1\n.end\n")
+        self.assertFalse(reset_trigger_hit(compile_text(hi), ["u"], 1 << 12))
 
 
 class FreeIds(unittest.TestCase):

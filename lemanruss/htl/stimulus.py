@@ -156,11 +156,13 @@ def seq_stimulus(
     return names, rows, stats
 
 
-def reset_trigger_hit(comp: Compiled, trigs: list[str], lanes: int = 1 << 16,
-                      seed: int = 0) -> bool:
-    """Build gate (Seeker v2.0): True when some trigger net is high in the reset state for at
-    least one of `lanes` random input vectors, i.e. the Trojan is satisfied at cycle 0 and is not
-    a rare-triggered Trojan. Latches start at their reset value (init 1 -> 1, else 0)."""
+RESET_TRIGGER_MAX_P = 1e-2  # the loosest rareness band of the release (Comb p < 1e-2)
+
+
+def reset_trigger_prob(comp: Compiled, trigs: list[str], lanes: int = 1 << 16,
+                       seed: int = 0) -> float:
+    """Largest P(trigger | reset state, uniform random inputs) over `trigs`, estimated on
+    `lanes` random input vectors. Latches start at their reset value (init 1 -> 1, else 0)."""
     rng = random.Random(f"{seed}:reset-trigger")
     mask = (1 << lanes) - 1
     vals = {n: rng.getrandbits(lanes) for n in comp.data_inputs}
@@ -168,7 +170,15 @@ def reset_trigger_hit(comp: Compiled, trigs: list[str], lanes: int = 1 << 16,
     for c_name in comp.clocks:
         vals[c_name] = 0
     _step(comp, vals, mask)
-    return any(vals.get(t, 0) for t in trigs)
+    return max((vals.get(t, 0).bit_count() / lanes for t in trigs), default=0.0)
+
+
+def reset_trigger_hit(comp: Compiled, trigs: list[str], lanes: int = 1 << 16,
+                      seed: int = 0) -> bool:
+    """Build gate (Seeker v2.0): True when some trigger fires in the reset state for more than
+    `RESET_TRIGGER_MAX_P` of the random inputs, i.e. at cycle 0 for (almost) any input. A trigger
+    that matches the reset state only with a rare input pattern is a rare Trojan and passes."""
+    return reset_trigger_prob(comp, trigs, lanes, seed) > RESET_TRIGGER_MAX_P
 
 
 def reset_active(golden: Compiled, circuits: list[Compiled], lanes: int, seed: int) -> list[int]:
