@@ -156,6 +156,21 @@ def seq_stimulus(
     return names, rows, stats
 
 
+def reset_trigger_hit(comp: Compiled, trigs: list[str], lanes: int = 1 << 16,
+                      seed: int = 0) -> bool:
+    """Build gate (Seeker v2.0): True when some trigger net is high in the reset state for at
+    least one of `lanes` random input vectors, i.e. the Trojan is satisfied at cycle 0 and is not
+    a rare-triggered Trojan. Latches start at their reset value (init 1 -> 1, else 0)."""
+    rng = random.Random(f"{seed}:reset-trigger")
+    mask = (1 << lanes) - 1
+    vals = {n: rng.getrandbits(lanes) for n in comp.data_inputs}
+    vals.update(_initial_state(comp, mask))
+    for c_name in comp.clocks:
+        vals[c_name] = 0
+    _step(comp, vals, mask)
+    return any(vals.get(t, 0) for t in trigs)
+
+
 def reset_active(golden: Compiled, circuits: list[Compiled], lanes: int, seed: int) -> list[int]:
     """Indices of circuits whose outputs differ from the golden's at the reset state for every
     one of `lanes` random input vectors: a Trojan whose magic value is the reset state itself

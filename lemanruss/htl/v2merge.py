@@ -133,6 +133,7 @@ def reason_summary(failures: list[object], base: str, set_name: str) -> str:
 def merge_family(
     family: str, rc: Source, tops: list[Source], si: Source | None, si_tops: list[Source],
     out: Path, tools: Tools, version: str, id_seed: int, datasheet_text: str,
+    removed_main: set[str] | None = None, removed_si: set[str] | None = None,
 ) -> Json:
     """Writes the merged release `out` (must not exist). Returns counts and dropped cells."""
     short = "sc" if family == "Seeker-Comb" else "ss"
@@ -260,6 +261,15 @@ def merge_family(
                 w = st.witnesses(base)
                 _as_dict(wit[base]["steps"]).update(
                     {rename[k]: v2 for k, v2 in _as_dict(w["steps"]).items()})
+    # circuits removed from the release (reset-state gate): they stay in the rc record only
+    gone = set(removed_main or set()) | {rename[i] for i in (removed_si or set()) if i in rename}
+    replaced: list[Json] = []
+    for (base, name), cell in sorted(cells.items()):
+        n_gone = sum(1 for i in _as_list(cell["infected_ids"]) if str(i) in gone)
+        if n_gone:
+            replaced.append({"base": base, "set": name, "removed": n_gone})
+        cell["infected_ids"] = [i for i in _as_list(cell["infected_ids"]) if str(i) not in gone]
+        cell["clean_ids"] = [i for i in _as_list(cell["clean_ids"]) if str(i) not in gone]
     # decide cells
     kept: dict[tuple[str, str], Json] = {}
     dropped: list[Json] = []
@@ -377,6 +387,7 @@ def merge_family(
     _dump(out_k / "rareness.json", [r for r in rareness if str(_as_dict(r)["circuit"]) in keep_ids])
     _dump(out_k / "failures.json", failures)
     _dump(out_k / "dropped_cells.json", dropped)
+    _dump(out_k / "replaced_cells.json", replaced)
     _dump(out_k / "scripts.json", {c: scripts[c] for c in keep_ids if c in scripts})
     _dump(out_k / "trojans.json", {c: trojans[c] for c in keep_ids if c in trojans})
     _dump(out_k / "cuts.json", {c: cuts[c] for c in keep_ids if c in cuts})
@@ -400,9 +411,19 @@ def merge_family(
     _dump(out / "manifest.json", manifest)
     (out / "DATASHEET.md").write_text(datasheet_text, encoding="utf-8")
     write_sha256sums(out)
-    return {"release": name, "circuits": len(files), "clean": n_clean,
+    return {"release": name, "circuits": len(files), "replaced": replaced, "clean": n_clean,
             "infected": len(files) - n_clean, "bases": len(bases),
             "cells": len(kept), "dropped": dropped}
+
+
+def _replaced_line(root: Path) -> str:
+    rep = _as_list(_load(root / "answer_key" / "replaced_cells.json"))
+    if not rep:
+        return "None (the family has no reset-state offender)."
+    tot = sum(int(str(_as_dict(r)["removed"])) for r in rep)
+    cells = ", ".join(f"{_as_dict(r)['base']}/{_as_dict(r)['set']} {_as_dict(r)['removed']}"
+                      for r in rep)
+    return f"{tot} circuits in {len(rep)} cells: {cells}."
 
 
 def v2_datasheet(family: str, name: str, root: Path, tools: Tools, odin_version: str,
@@ -437,6 +458,15 @@ def v2_datasheet(family: str, name: str, root: Path, tools: Tools, odin_version:
         "- answer key: `answer_key/` (labels, sets, Trojans, scripts, rareness, witnesses, "
         "`pre/`, `dropped_cells.json`); a detector must not read it.", "",
         "Circuits per benchmark: " + ", ".join(f"{b} {n}" for b, n in sorted(by_base.items())), "",
+        "## Reset-state Trojans replaced (Seq)", "",
+        "A Trojan whose trigger is satisfied in the reset state (checked on 65,536 random input "
+        "vectors at cycle 0) fires whatever the inputs: it is not a rare-triggered Trojan. "
+        "Seeker-Seq v2.0-rc8 and the silicon rc2 set carried such circuits (rc8 stays as the "
+        "record). v2.0 has a build gate against them; each offender was removed and replaced by "
+        "a new draw of the same cell with the same Trojan count that passes every gate, so the "
+        "infected count and the Trojan-count mix of the cell are unchanged. Per cell "
+        "(removed and replaced):", "",
+        _replaced_line(root), "",
         "## Dropped cells (never padded, distinctness never relaxed)", "",
         "| benchmark | target | built | cause |", "|---|---|---|---|"]
     for d in dropped:

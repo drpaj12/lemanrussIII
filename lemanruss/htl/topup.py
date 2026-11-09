@@ -86,18 +86,23 @@ def _make_ctx(mode: str, golden: Path, seed: int) -> Ctx | str:
 
 def fill_set(
     bb: BaseBuild, set_name: str, kind: str, short: str, ctx: Ctx, need_inf: int,
-    need_clean: int, pre_builder: PreBuilder, out: list[Json],
+    need_clean: int, pre_builder: PreBuilder, out: list[Json], ms: list[int] | None = None,
 ) -> tuple[int, int]:
     """The loops of `n200.build_set` with the missing counts instead of a fresh draw."""
     rng = random.Random(f"{bb.seed}:{bb.base}:{set_name}:draw")
     built = failed = empty = 0
     while built < need_inf and failed < MAX_FAILED and empty < 4:
-        m = rng.choices([c for c, _w in MULTI], weights=[w for _c, w in MULTI])[0]
+        forced = ms is not None and built < len(ms)
+        m = ms[built] if ms is not None and forced else \
+            rng.choices([c for c, _w in MULTI], weights=[w for _c, w in MULTI])[0]
         specs = _draw_circuit(ctx, rng, m)
         if not specs:
             empty += 1
             continue
         empty = 0
+        if forced and len(specs) != m:  # a replacement keeps its Trojan count
+            failed += 1
+            continue
         cid = bb.next_id(short)
         pre = pre_builder(bb, ctx, specs, cid)
         res: Json | str
@@ -248,3 +253,85 @@ def golden_ok(base_file: Path, golden_file: Path) -> bool:
 
 def circuit_count(path: Path) -> int:
     return len(compile_model(parse_single_model(path.read_text(encoding="utf-8"))).blocks)
+
+
+def replace_base(
+    job: tuple[str, str, Path, str, Path, int, list[tuple[Path, bool]], dict[str, list[int]],
+               list[int]],
+) -> Json:
+    """Replacement draws for circuits removed from a release (Seeker v2.0, reset-state gate).
+    job = (family, mode, plain golden file, base, out, seed, existing sources, plan, fresh ids)
+    where `plan` maps a set name to the Trojan counts of the removed infected circuits (one new
+    infected circuit per entry, same count) and `existing sources` are the (tree, released)
+    pairs whose circuits of the base every new circuit must differ from."""
+    family, mode, golden_file, base, out, seed, sources, plan, fresh = job
+    cache = out / "answer_key" / "jobs" / f"{base}.json"
+    if cache.exists():
+        loaded: Json = json.loads(cache.read_text(encoding="utf-8"))
+        return loaded
+    t0 = time.monotonic()
+    short = "sc" if family == "Seeker-Comb" else "ss"
+    (out / "circuits").mkdir(parents=True, exist_ok=True)
+    bb = TopupBuild(golden_file, out, seed, fresh)
+    for root, released in sources:
+        for _cid, kind, text in existing_circuits(root, released, base):
+            bb.hashes.add(_sha(text))
+            bb.sigs.add((kind, ob.signature(text)))
+    sets_n = {n: k for n, k in SETS_ALL}
+    result: Json = {"base": base, "family": family, "golden": "", "kind": None, "gates": None}
+    circuits: list[Json] = []
+    sets: dict[str, Json] = {}
+    pre_builder = _pre_builder(mode)
+    for set_name, ms in sorted(plan.items()):
+        try:
+            si = [n for n, _k in SETS_ALL].index(set_name)
+            made = _make_ctx(mode, bb.golden_path, seed * 10 + si)
+            if isinstance(made, str):
+                bb.fail(set_name, made)
+                continue
+            b_inf, _c = fill_set(bb, set_name, sets_n[set_name], short, made, len(ms), 0,
+                                 pre_builder, circuits, ms)
+            sets[set_name] = {"map": sets_n[set_name], "replacements": len(ms), "infected": b_inf,
+                              "clean": 0}
+        except Exception as exc:
+            circuits[:] = [c for c in circuits if c.get("set") != set_name]
+            bb.fail(set_name, f"{type(exc).__name__}: {str(exc)[:160]}")
+    result["sets"] = sets
+    result["circuits"] = circuits
+    result["failures"] = bb.failures
+    result["seconds"] = round(time.monotonic() - t0)
+    if bb.witness:
+        wdir = out / "answer_key" / "witnesses"
+        wdir.mkdir(exist_ok=True)
+        keep = {c["id"] for c in circuits}
+        with gzip.open(wdir / f"{base}.json.gz", "wt", encoding="utf-8") as fh:
+            json.dump({"inputs": list(bb.golden_inputs),
+                       "steps": {k: v for k, v in bb.witness.items() if k in keep}}, fh)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps(result, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"REPLACE-TIME {base} {result['seconds']} s, "
+          f"{ {k: (v['replacements'], v['infected']) for k, v in sets.items()} }, "
+          f"failures {len(bb.failures)}", file=sys.stderr, flush=True)
+    return result
+
+
+def existing_circuits(root: Path, released: bool, base: str) -> list[tuple[str, str, str]]:
+    """(id, mapping kind, circuit text) of every circuit of `base` in a release or build tree."""
+    key = root / "answer_key"
+    out: list[tuple[str, str, str]] = []
+    if released:
+        sets_all = json.loads((key / "sets.json").read_text(encoding="utf-8"))
+        scripts = json.loads((key / "scripts.json").read_text(encoding="utf-8"))
+        entry = sets_all.get(base)
+        if entry is None:
+            return out
+        for cid in _ids_of(entry)[1:]:
+            text = read_gz(root / "circuits" / f"{cid}.blif.gz")
+            out.append((cid, str(scripts[cid]["map"]), text))
+        return out
+    jf = key / "jobs" / f"{base}.json"
+    if jf.is_file():
+        for c in json.loads(jf.read_text(encoding="utf-8"))["circuits"]:
+            text = (root / "circuits" / f"{c['id']}.blif").read_text(encoding="utf-8")
+            out.append((str(c["id"]), str(c["map"]), text))
+    return out

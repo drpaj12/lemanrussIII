@@ -41,6 +41,7 @@ from lemanruss.htl.n200plan import (
     pick_weighted,
     trojan_of,
 )
+from lemanruss.htl.stimulus import reset_trigger_hit
 
 N_SET = 100
 N_INF_LO, N_INF_HI = 10, 70
@@ -95,6 +96,8 @@ def build_pre_rc7(
         return (f"rc7 FF/latch equality hard gate failed: clean {clean_ff}, "
                 f"infected {infected_ff}")
     icomp = compile_model(model)
+    if reset_trigger_hit(icomp, [trig_name(j) for j, t in enumerate(specs) if t.payload != SLOW]):
+        return "trigger satisfied in the reset state"
     recs: list[Json] = []
     trigs: list[str] = []
     steps_out: list[tuple[TSpec, list[dict[str, int]]]] = []
