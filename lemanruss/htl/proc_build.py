@@ -322,9 +322,10 @@ def check_shipped_silence(
 
 
 def shipped_silence_ok(silence: dict[str, dict[str, bool]]) -> bool:
-    """The gate itself: every shipped program's Odin III RTL and netlist traces must equal
-    clean. iverilog is excluded from this check by construction (dict key ignored here)."""
-    return all(res["rtl"] and res["nl"] for res in silence.values())
+    """The gate itself (v2.0, strict four-state): every shipped program's Odin III RTL, Odin III
+    netlist and iverilog traces must equal clean; an x or z where clean has 0 or 1 is a
+    difference (`traces_equal` compares the text exactly)."""
+    return all(res["rtl"] and res["nl"] and res["iverilog"] for res in silence.values())
 
 
 _TB = {"darkriscv": "dark_tb.v", "mcu": "mcu_tb.v", "mips_16": "mips_tb.v",
@@ -503,6 +504,7 @@ def build_one_circuit(
 
         result.gate_pass = (
             result.ff_equal and all(result.per_trojan_fires.values()) and result.silent_on_neutral
+            and result.silent_on_neutral_iverilog
             and result.silent_on_neutral_shift and result.shipped_silent
         )
         if not result.gate_pass:

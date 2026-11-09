@@ -181,7 +181,8 @@ def merge_family(
             for name, info in _as_dict(r["sets"]).items():
                 cell = cells[(base, name)]
                 cell["map"] = _as_dict(info)["map"]
-                cell["n_infected_drawn"] = _as_dict(info)["n_infected_drawn"]
+                if "n_infected_drawn" in _as_dict(info):
+                    cell["n_infected_drawn"] = _as_dict(info)["n_infected_drawn"]
             w = t.witnesses(base)
             wit.setdefault(base, {"inputs": w["inputs"], "steps": {}})
             _as_dict(wit[base]["steps"]).update(_as_dict(w["steps"]))

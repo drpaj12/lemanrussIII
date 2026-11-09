@@ -339,7 +339,7 @@ PICO_ALU_LINE_PATCHED = (
 
 def _kinded_triggers_decl(
     magic_words: list[int], kinds: list[str], sample_wire: str, valid_wire: str | None, *,
-    force_inactive: bool = False,
+    force_inactive: bool = False, reset_active: str | None = None,
 ) -> tuple[str, list[str]]:
     """Like `_independent_triggers_decl`, plus three combined wires (`__htl_trigger_reset`,
     `__htl_trigger_stall`, `__htl_trigger_alu`), each the OR of the per-Trojan trigger wires whose
@@ -357,6 +357,11 @@ def _kinded_triggers_decl(
     for kind in PAYLOAD_KINDS:
         matched = [n for n, k in zip(names, kinds, strict=True) if k == kind]
         expr = " | ".join(matched) if matched else "1'b0"
+        if matched and reset_active:
+            # v2.0 masking rule: no payload acts while the core's own reset is active, so the
+            # host's hold logic sees its original signals and its registers load known values
+            # (a trigger that reads a no-reset register would otherwise put x into a hold path)
+            expr = f"({expr}) & ~({reset_active})"
         lines.append(f"  wire __htl_trigger_{kind} = {expr};")
     return "\n".join(lines) + "\n", names
 
@@ -375,7 +380,8 @@ def insert_mcu_kinded_multitrojan(
     patched = source.replace(MCU_FI_CONNECTION, MCU_FI_CONNECTION_PATCHED)
     patched = patched.replace(MCU_ALU_ANCHOR, MCU_ALU_ANCHOR_PATCHED)
     decl, names = _kinded_triggers_decl(
-        magic_words, kinds, "instruction", None, force_inactive=force_inactive)
+        magic_words, kinds, "instruction", None, force_inactive=force_inactive,
+        reset_active="reset")
     decl += (
         "  wire [1:0] __htl_pc_mux = __htl_trigger_stall ? 2'b01 :\n"
         "                            __htl_trigger_reset ? 2'b11 : next_PC_select;\n"
@@ -402,7 +408,8 @@ def insert_dark_kinded_multitrojan(
     patched = patched.replace(DARK_HLT_LINE, DARK_HLT_LINE_PATCHED)
     patched = patched.replace(DARK_RMDATA_LINE, DARK_RMDATA_LINE_PATCHED)
     decl, names = _kinded_triggers_decl(
-        magic_words, kinds, "XIDATA", None, force_inactive=force_inactive)
+        magic_words, kinds, "XIDATA", None, force_inactive=force_inactive,
+        reset_active="RES || XRES")
     decl = (
         DARK_TRIGGER_COMMENT + decl
         + "  wire [31:0] __htl_rmdata = (__htl_trigger_alu && (FCT3==3'd5))\n"
@@ -430,7 +437,8 @@ def insert_picorv32_kinded_multitrojan(
     patched = patched.replace(PICO_STALL_LINE, PICO_STALL_LINE_PATCHED)
     patched = patched.replace(PICO_ALU_LINE, PICO_ALU_LINE_PATCHED)
     decl, names = _kinded_triggers_decl(
-        magic_words, kinds, PICO_TRIGGER_SAMPLE, None, force_inactive=force_inactive)
+        magic_words, kinds, PICO_TRIGGER_SAMPLE, None, force_inactive=force_inactive,
+        reset_active="!resetn")
     # picorv32.v holds several modules (picorv32, picorv32_regs, picorv32_pcpi_mul, ...,
     # picorv32_axi, picorv32_wb); `str.rindex("endmodule")` (every other inserter in this file
     # uses it, safe there -- their upstream files hold exactly one module) would land the new

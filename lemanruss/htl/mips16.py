@@ -215,6 +215,8 @@ def _trigger_decl(magic_words: list[int], kinds: list[str], *, force_inactive: b
     for kind in ("reset", "stall", "alu"):
         sel = [n for n, k in zip(names, kinds, strict=True) if k == kind]
         expr = " | ".join(sel) if sel else "1'b0"
+        if sel:  # v2.0 masking rule: no payload acts while the core's reset (rst, active high) is on
+            expr = f"({expr}) & ~rst"
         lines.append(f"wire __htl_trigger_{kind} = {expr};")
     return "\n".join(lines) + "\n"
 

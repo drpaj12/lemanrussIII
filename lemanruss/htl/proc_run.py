@@ -210,9 +210,14 @@ def run_mcu_iverilog_only(out: Path, files: list[str], cycles: int, tag: str) ->
 
 
 def write_dark_program(out: Path, words: list[int]) -> None:
-    """Overwrites `src/darksocv.mem` (both the main build dir and its `iv/` copy) with `words`."""
-    write_dark_mem(words, out / "src" / "darksocv.mem")
-    write_dark_mem(words, out / "iv" / "src" / "darksocv.mem")
+    """Overwrites `src/darksocv.mem` (both the main build dir and its `iv/` copy) with `words`,
+    followed by 64 NOPs: the core prefetches past a program's final self-loop, and an undefined
+    (x) instruction word read there would put x into a four-state trigger comparator (v2.0: the
+    gates are strict four-state, a defined image after the program keeps clean and infected
+    runs free of x)."""
+    padded = [*words, *([0x00000013] * 64)]
+    write_dark_mem(padded, out / "src" / "darksocv.mem")
+    write_dark_mem(padded, out / "iv" / "src" / "darksocv.mem")
 
 
 def run_mcu_once(
