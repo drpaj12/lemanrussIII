@@ -192,22 +192,27 @@ def tables(root: Path) -> list[str]:
     scripts: dict[str, Json] = json.loads((key / "scripts.json").read_text(encoding="utf-8"))
     trojans: dict[str, list[Json]] = json.loads((key / "trojans.json").read_text(encoding="utf-8"))
     fails: list[Json] = json.loads((key / "failures.json").read_text(encoding="utf-8"))
+    names = ("K4", "K6", "G", "S") if any(
+        isinstance(v["sets"], dict) and "S" in v["sets"] for v in sets.values()) \
+        else ("K4", "K6", "G")
+    has_s = "S" in names
     out = ["### Bases and sets", "",
            "| base | source | gates | K4 drawn / infected / clean | "
-           "K6 drawn / infected / clean | G drawn / infected / clean |",
-           "|---|---|---|---|---|---|"]
+           "K6 drawn / infected / clean | G drawn / infected / clean |"
+           + (" S drawn / infected / clean |" if has_s else ""),
+           "|---|---|---|---|---|---|" + ("---|" if has_s else "")]
     for base, s in sorted(sets.items(), key=lambda kv: (int(str(kv[1].get("gates") or 0)),
                                                          kv[0])):
         ps = s["sets"]
         assert isinstance(ps, dict)
         cells = []
-        for name in ("K4", "K6", "G"):
+        for name in names:
             v = ps.get(name)
             cells.append("- " if v is None else
                          f"{v['n_infected_drawn']} / {len(v['infected_ids'])} / "
                          f"{len(v['clean_ids'])}")
         out.append(f"| {base} | {source_of(base)} | {s.get('gates')} | " + " | ".join(cells) + " |")
-    for name in ("K4", "K6", "G"):
+    for name in names:
         rs = [r for r in recs if scripts[str(r["circuit"])]["set"] == name]
         circ = [c for c, v in scripts.items() if v["set"] == name and c in trojans]
         out += ["", f"### Set {name}: {len(circ)} infected circuits, {len(rs)} Trojans", ""]

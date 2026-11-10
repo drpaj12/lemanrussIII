@@ -14,6 +14,8 @@ Stages, in order:
 4. **Gates and releases:** witness replay in Odin III, equivalence by ABC to the source, label-leak gates, then datasheets and checksums.
 5. **Detector baselines and scoring:** a submission format and a scorer that does not publish the answer key.
 
+Seeker v2.0 (full sets, 2026-11-09): `seeker-comb-v2.0`, `seeker-seq-v2.0` and `seeker-proc-v2.0` give every benchmark a golden, a neutral stimulus and SeekerSets of exactly 100 circuits per target (K4, K6, gates, silicon); records in `releases/seeker-*-v2.0/`. The release candidates below are superseded.
+
 Releases: Seeker-Comb v2.0-rc5 (5809 circuits, 31 bases), Seeker-Seq v2.0-rc8 (11005 circuits, 38 bases: the 36 rc7 bases unchanged plus OpenCores ca_prng and i2c; rc7 superseded by rc8 as a superset; magic-number triggers, no Trojan
 flip-flops) and a Seeker-Proc pilot3 of four circuits. Seeker-Seq v2.0-rc6 (10735 circuits) is superseded by rc7: on rc6 the flip-flop count
 alone separated the labels (AUROC 0.948) because the counter and pattern triggers and the energy ring add flip-flops; rc7 adds none (exact

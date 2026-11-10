@@ -12,17 +12,17 @@ public. Full design and threat model: `docs/specs/2026-11-02-scoring-design.md`.
 
 ## Pick a subset
 
-`subsets.json` lists named subsets (ids only): `<Fam>-K4`, `<Fam>-K6`, `<Fam>-G` (mapping set),
-`<Fam>-prev-low|mid|high` (share infected), `<Fam>-trojans-1|2|3` (50 infected with that many
-Trojans plus 50 clean), `<Fam>-mix100`, and `all`. Each is 100 circuits (`all` is the whole
-release). `<Fam>` is `Comb` or `Seq`.
+Per benchmark the release has a golden and SeekerSets of exactly 100 circuits: `<benchmark>-K4`, `<benchmark>-K6`,
+`<benchmark>-gates` and, where it exists, `<benchmark>-silicon`. `<benchmark>` is all its sets together and the
+family bundle is `Comb`, `Seq` or `Proc`. Release names: `seeker-comb-v2.0`, `seeker-seq-v2.0`, `seeker-proc-v2.0`.
+Each benchmark package also holds a neutral stimulus that no Trojan reacts to.
 
 ## File format
 
 One CSV file. Header lines first, then the column row, then one row per circuit of the subset:
 
-    # seeker-release: seeker-comb-v2.0-rc4
-    # subset: Comb-K4
+    # seeker-release: seeker-comb-v2.0
+    # subset: C432-K4
     # detector: my-detector-v1
     # team: My Lab
     # contact: me@example.org
@@ -58,6 +58,6 @@ per-circuit results.
 
 ## Limits
 
-One scored submission per 24 hours and 5 in total per identity per release. A refused
+One scored submission per 24 hours, 10 in total, 3 per benchmark and 3 family bundles per identity per release. A refused
 submission does not count. The quota exists so that the key cannot be recovered by repeated
 queries; the threat model and numbers are in the spec.

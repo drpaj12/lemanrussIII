@@ -73,10 +73,12 @@ def draw_infected(n: int, rng: random.Random) -> set[int]:
 def package_proc_rc1(
     circuits: list[LogicalCircuit], out_dir: Path, seed: int, release_name: str = RELEASE_NAME,
     notes: dict[str, object] | None = None, odin3_bin: Path | None = None,
-    form_names: dict[str, str] | None = None,
+    form_names: dict[str, str] | None = None, n_infected: dict[str, int] | None = None,
 ) -> dict[str, object]:
     """`odin3_bin` set: every file passes the release gate (`proc_gate`) before it is written,
-    or `GateError` stops the packaging."""
+    or `GateError` stops the packaging. `n_infected` (form name -> count) replaces the uniform
+    10..70 draw of the number of infected circuits per form (the v2.0 top-up draws it over the
+    whole cell of 100, of which the released circuits are fixed)."""
     fnames = form_names or FORM_NAMES
     out_dir.mkdir(parents=True, exist_ok=False)
     cdir, adir = out_dir / "circuits", out_dir / "answer_key"
@@ -93,7 +95,9 @@ def package_proc_rc1(
     ids = {slot: f"pr{n:04d}" for slot, n in zip(slots, order, strict=True)}
     build_key = {v: k for k, v in fnames.items()}
 
-    infected_idx = {f: draw_infected(len(circuits), rng) for f in fnames.values()}
+    infected_idx = {f: draw_infected(len(circuits), rng) if n_infected is None
+                    else set(rng.sample(range(len(circuits)), n_infected[f]))
+                    for f in fnames.values()}
     labels: dict[str, str | None] = {}
     prov: dict[str, dict[str, object]] = {}
     manifest_rows: list[dict[str, object]] = []

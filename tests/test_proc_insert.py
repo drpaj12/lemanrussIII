@@ -194,9 +194,10 @@ class TestMcuKindedPatch(unittest.TestCase):
     def test_three_kinds_wire_up(self) -> None:
         patched, names = insert_mcu_kinded_multitrojan(self.source, KIND_WORDS, KINDS)
         self.assertEqual(names, ["__htl_trigger_0", "__htl_trigger_1", "__htl_trigger_2"])
-        self.assertIn("wire __htl_trigger_reset = __htl_trigger_0;", patched)
-        self.assertIn("wire __htl_trigger_stall = __htl_trigger_1;", patched)
-        self.assertIn("wire __htl_trigger_alu = __htl_trigger_2;", patched)
+        # v2.0 masking: no payload acts while the core's reset is active
+        self.assertIn("wire __htl_trigger_reset = (__htl_trigger_0) & ~(reset);", patched)
+        self.assertIn("wire __htl_trigger_stall = (__htl_trigger_1) & ~(reset);", patched)
+        self.assertIn("wire __htl_trigger_alu = (__htl_trigger_2) & ~(reset);", patched)
         self.assertIn("__htl_pc_mux", patched)
         self.assertIn("__htl_alu_raw", patched)
         self.assertIn("ALU_operation==6'd12 || ALU_operation==6'd13", patched)
@@ -276,7 +277,9 @@ class TestPicorv32KindedPatch(unittest.TestCase):
         self.assertIn(
             "decoder_trigger <= !__htl_trigger_stall && mem_do_rinst && mem_done;", patched)
         self.assertIn("instr_srli || instr_srl", patched)
-        self.assertIn("next_insn_opcode == 32'h", patched)
+        self.assertIn("next_insn_opcode == 32'h", patched)  # alu trigger
+        self.assertIn("mem_valid && mem_ready && mem_instr && (mem_rdata == 32'h", patched)
+        self.assertIn("& ~(!resetn)", patched)
         self.assertEqual(patched.count("endmodule"), self.source.count("endmodule"))
 
     def test_rejects_bad_kind(self) -> None:
