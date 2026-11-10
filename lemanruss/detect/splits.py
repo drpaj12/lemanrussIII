@@ -15,6 +15,7 @@ MCNC = frozenset(
     {"alu4", "apex2", "apex4", "cordic", "ex5p", "misex3", "pdc", "spla", "t481"}
 )
 VTR = frozenset({"diffeq1", "diffeq2", "mkPktMerge", "mkSMAdapter4B", "sha"})
+OPENCORES = frozenset({"ca_prng", "i2c"})  # Seq rc8 and v2.0 bases
 
 
 def source_of(base: str) -> str:
@@ -28,6 +29,8 @@ def source_of(base: str) -> str:
         return "MCNC"
     if base in VTR:
         return "VTR"
+    if base in OPENCORES:
+        return "OpenCores"
     raise ValueError(f"unknown source for base {base!r}")
 
 
