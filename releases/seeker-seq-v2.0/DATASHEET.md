@@ -42,7 +42,6 @@ Which circuits the stimulus was checked against stays in the answer key.
 
 Two gates keep Trojans that fire at the start out of the release (rc8 stays as the record). (1) Reset state: the trigger fires in the reset state for more than 1 percent of random input vectors. (2) Early trigger: the trigger is high within the first 8 cycles from reset for more than 50 percent of random input sequences (no stimulus can stay silent against it). Replaced in v2.0: round 1 (gate 1) 1,247 circuits (rc8 970, Seq top-ups 24, Si rc2 246, Si top-ups 7); round 2 (gate 2) 280 circuits (rc8 136, Si rc2 43, earlier replacement and top-up trees 101). Each replacement keeps the cell and the Trojan count of the circuit it replaced; the infected count of each cell is unchanged.
 
-Data only, no rejection: Trojans of the shipped circuits whose trigger is high within 8 cycles with probability above 1e-2 (the reset-gate threshold), per benchmark (Trojans with a trigger, those above the threshold): b01 16/9, b02 0/0, b03 91/62, b04 206/93, b06 7/6, b07 85/24, b08 121/25, b09 110/5, b10 175/61, b11 123/2, b12 9/3, b13 128/3, ca_prng 180/178, i2c 119/13, s1196 93/50, s1238 139/92, s1423 130/24, s1488 29/14, s1494 31/12, s208 25/13, s27 23/22, s298 13/2, s344 118/108, s349 108/97, s382 18/4, s386 24/18, s400 25/6, s420 58/17, s444 38/24, s510 110/48, s526 44/16, s5378 168/60, s641 158/54, s713 143/54, s820 52/17, s832 64/39, s953 109/45, sha 171/32.
 
 Benchmarks with a stimulus under 64 cycles: s382 4, s349 44, s444 14, s5378 38. Every candidate vector fires some Trojan beyond that point (the Trojans of the benchmark are fast-band magic triggers on registers that most paths set).
 
@@ -58,46 +57,46 @@ b01 (ITC-99), b02 (ITC-99), b03 (ITC-99), b04 (ITC-99), b06 (ITC-99), b07 (ITC-9
 
 ### Bases and sets
 
-| base | source | gates | K4 drawn / infected / clean | K6 drawn / infected / clean | G drawn / infected / clean | S drawn / infected / clean |
-|---|---|---|---|---|---|---|
-| s27 | ISCAS-89 | 17 | -  | -  | 50 / 50 / 50 | 63 / 63 / 37 |
-| s208 | ISCAS-89 | 42 | 59 / 59 / 41 | 30 / 30 / 70 | 67 / 67 / 33 | 63 / 63 / 37 |
-| s420 | ISCAS-89 | 65 | 55 / 55 / 45 | 49 / 49 / 51 | 11 / 11 / 89 | 32 / 32 / 68 |
-| s382 | ISCAS-89 | 105 | 20 / 20 / 80 | 22 / 22 / 78 | 44 / 44 / 56 | 45 / 45 / 55 |
-| s386 | ISCAS-89 | 111 | 60 / 60 / 40 | 34 / 34 / 66 | 43 / 43 / 57 | 26 / 26 / 74 |
-| s344 | ISCAS-89 | 114 | 25 / 25 / 75 | 23 / 23 / 77 | 34 / 34 / 66 | 44 / 44 / 56 |
-| s349 | ISCAS-89 | 114 | 46 / 46 / 54 | 28 / 28 / 72 | 67 / 67 / 33 | 21 / 21 / 79 |
-| s444 | ISCAS-89 | 114 | 36 / 36 / 64 | 52 / 52 / 48 | 67 / 67 / 33 | 15 / 15 / 85 |
-| b02 | ITC-99 | 117 | 11 / 11 / 89 | -  | 21 / 21 / 79 | 49 / 49 / 51 |
-| s400 | ISCAS-89 | 120 | 70 / 70 / 30 | 22 / 22 / 78 | 17 / 17 / 83 | 28 / 28 / 72 |
-| s641 | ISCAS-89 | 139 | 40 / 40 / 60 | 36 / 36 / 64 | 49 / 49 / 51 | 60 / 60 / 40 |
-| s713 | ISCAS-89 | 141 | 48 / 48 / 52 | 68 / 68 / 32 | 32 / 32 / 68 | 35 / 35 / 65 |
-| s526 | ISCAS-89 | 142 | 11 / 11 / 89 | 40 / 40 / 60 | 29 / 29 / 71 | 25 / 25 / 75 |
-| b01 | ITC-99 | 149 | 56 / 56 / 44 | -  | 38 / 38 / 62 | 20 / 20 / 80 |
-| b06 | ITC-99 | 191 | 28 / 28 / 72 | -  | 66 / 66 / 34 | 54 / 54 / 46 |
-| s510 | ISCAS-89 | 213 | 56 / 56 / 44 | 55 / 55 / 45 | 63 / 63 / 37 | 63 / 63 / 37 |
-| s820 | ISCAS-89 | 231 | 40 / 40 / 60 | 26 / 26 / 74 | 13 / 13 / 87 | 15 / 15 / 85 |
-| s832 | ISCAS-89 | 266 | 20 / 20 / 80 | 23 / 23 / 77 | 17 / 17 / 83 | 18 / 18 / 82 |
-| b03 | ITC-99 | 358 | 18 / 18 / 82 | 53 / 53 / 47 | 48 / 48 / 52 | 47 / 47 / 53 |
-| s953 | ISCAS-89 | 363 | 35 / 35 / 65 | 40 / 40 / 60 | -  | 20 / 20 / 80 |
-| s1423 | ISCAS-89 | 406 | 22 / 22 / 78 | 26 / 26 / 74 | 28 / 28 / 72 | 24 / 24 / 76 |
-| b09 | ITC-99 | 415 | 45 / 45 / 55 | 48 / 48 / 52 | 11 / 11 / 89 | 18 / 18 / 82 |
-| s1196 | ISCAS-89 | 483 | 12 / 12 / 88 | 20 / 20 / 80 | 19 / 19 / 81 | 35 / 35 / 65 |
-| b10 | ITC-99 | 511 | 57 / 57 / 43 | 46 / 46 / 54 | 34 / 34 / 66 | 49 / 49 / 51 |
-| s1494 | ISCAS-89 | 518 | 26 / 26 / 74 | 44 / 44 / 56 | 23 / 23 / 77 | 22 / 22 / 78 |
-| s1488 | ISCAS-89 | 522 | 56 / 56 / 44 | 55 / 55 / 45 | 42 / 42 / 58 | 25 / 25 / 75 |
-| s1238 | ISCAS-89 | 529 | 30 / 30 / 70 | 30 / 30 / 70 | 25 / 25 / 75 | 63 / 63 / 37 |
-| s5378 | ISCAS-89 | 989 | 61 / 61 / 39 | 38 / 38 / 62 | 29 / 29 / 71 | 17 / 17 / 83 |
-| b08 | ITC-99 | 1275 | 16 / 16 / 84 | 62 / 62 / 38 | 16 / 16 / 84 | 40 / 40 / 60 |
-| b13 | ITC-99 | 1650 | 35 / 35 / 65 | 11 / 11 / 89 | 68 / 68 / 32 | 16 / 16 / 84 |
-| ca_prng | OpenCores | 2293 | 64 / 64 / 36 | 43 / 43 / 57 | 46 / 46 / 54 | -  |
-| b07 | ITC-99 | 2345 | 15 / 15 / 85 | 37 / 37 / 63 | 47 / 47 / 53 | 25 / 25 / 75 |
-| i2c | OpenCores | 4193 | 70 / 70 / 30 | 30 / 30 / 70 | 49 / 49 / 51 | -  |
-| s298 | ISCAS-89 | 4268 | 26 / 26 / 74 | 59 / 59 / 41 | 24 / 24 / 76 | 51 / 51 / 49 |
-| b04 | ITC-99 | 5034 | 54 / 54 / 46 | 36 / 36 / 64 | 27 / 27 / 73 | 44 / 44 / 56 |
-| b11 | ITC-99 | 5613 | 17 / 17 / 83 | 10 / 10 / 90 | 47 / 47 / 53 | 26 / 26 / 74 |
-| b12 | ITC-99 | 9153 | 52 / 52 / 48 | 60 / 60 / 40 | 47 / 47 / 53 | 41 / 41 / 59 |
-| sha | VTR | 11294 | 41 / 41 / 59 | 62 / 62 / 38 | 12 / 12 / 88 | 19 / 19 / 81 |
+| base | source | gates |
+|---|---|---|
+| s27 | ISCAS-89 | 17 |
+| s208 | ISCAS-89 | 42 |
+| s420 | ISCAS-89 | 65 |
+| s382 | ISCAS-89 | 105 |
+| s386 | ISCAS-89 | 111 |
+| s344 | ISCAS-89 | 114 |
+| s349 | ISCAS-89 | 114 |
+| s444 | ISCAS-89 | 114 |
+| b02 | ITC-99 | 117 |
+| s400 | ISCAS-89 | 120 |
+| s641 | ISCAS-89 | 139 |
+| s713 | ISCAS-89 | 141 |
+| s526 | ISCAS-89 | 142 |
+| b01 | ITC-99 | 149 |
+| b06 | ITC-99 | 191 |
+| s510 | ISCAS-89 | 213 |
+| s820 | ISCAS-89 | 231 |
+| s832 | ISCAS-89 | 266 |
+| b03 | ITC-99 | 358 |
+| s953 | ISCAS-89 | 363 |
+| s1423 | ISCAS-89 | 406 |
+| b09 | ITC-99 | 415 |
+| s1196 | ISCAS-89 | 483 |
+| b10 | ITC-99 | 511 |
+| s1494 | ISCAS-89 | 518 |
+| s1488 | ISCAS-89 | 522 |
+| s1238 | ISCAS-89 | 529 |
+| s5378 | ISCAS-89 | 989 |
+| b08 | ITC-99 | 1275 |
+| b13 | ITC-99 | 1650 |
+| ca_prng | OpenCores | 2293 |
+| b07 | ITC-99 | 2345 |
+| i2c | OpenCores | 4193 |
+| s298 | ISCAS-89 | 4268 |
+| b04 | ITC-99 | 5034 |
+| b11 | ITC-99 | 5613 |
+| b12 | ITC-99 | 9153 |
+| sha | VTR | 11294 |
 
 ### Set K4: 1433 infected circuits, 2390 Trojans
 

@@ -6,11 +6,7 @@ Family: Seeker-Proc. Version 2.0 (supersedes rc3 and the Si rc2 processor set). 
 
 1,200 circuits: three processor cores, each with four SeekerSets of exactly 100 circuits: gates (AND/OR/NOT), lut4 (K4), lut6 (K6) and silicon (sky130_fd_sc_hd standard cells, with cell Verilog in `circuits_v/`). A random 10 to 70 of each 100 are infected with 1 to 3 Trojans (P = 0.5, 0.3, 0.2); a detector is not told which. Ids are opaque and shuffled. Answer key in `answer_key/` (labels, provenance, catalogue, clean twins, activation programs); a detector must not read it.
 
-| core | gates inf/clean | lut4 inf/clean | lut6 inf/clean | silicon inf/clean |
-|---|---|---|---|---|
-| BRISC-V mcu (Arduino-on-RISC-V, MIT) | 21 / 79 | 57 / 43 | 18 / 82 | 27 / 73 |
-| OpenCores mips_16 (16-bit, 5-stage) | 62 / 38 | 48 / 52 | 28 / 72 | 50 / 50 |
-| PicoRV32 (YosysHQ, ISC) | 27 / 73 | 49 / 51 | 36 / 64 | 62 / 38 |
+Per-set infected counts are part of the answer key; each set has a random 10 to 70 of 100 infected.
 
 The benchmark key of the BRISC-V mcu (Arduino-on-RISC-V) is `mcu`.
 
@@ -42,7 +38,7 @@ Strict four-state: flip-flop equality with the clean twin; each Trojan's activat
 
 ## Neutral stimulus (public)
 
-Per core, `stimulus/neutral-program.hex`: the neutral program of the gates (no magic word). On Odin III 1.6.0 netlist simulation every infected circuit of the core, in every form, gives a trace equal to a clean circuit of the same form: mips_16: gates 62 infected, 0 differing, lut4 48 infected, 0 differing, lut6 28 infected, 0 differing, silicon 50 infected, 0 differing; mcu: gates 21 infected, 0 differing, lut4 57 infected, 0 differing, lut6 18 infected, 0 differing, silicon 27 infected, 0 differing; picorv32: gates 27 infected, 0 differing, lut4 49 infected, 0 differing, lut6 36 infected, 0 differing, silicon 62 infected, 0 differing. Which circuits it was checked against stays in the key.
+Per core, `stimulus/neutral-program.hex`: the neutral program of the gates (no magic word). On Odin III 1.6.0 netlist simulation every infected circuit of the core, in every form, gives a trace equal to a clean circuit of the same form: mips_16: gates 0 differing, lut4 0 differing, lut6 0 differing, silicon 0 differing; mcu: gates 0 differing, lut4 0 differing, lut6 0 differing, silicon 0 differing; picorv32: gates 0 differing, lut4 0 differing, lut6 0 differing, silicon 0 differing. Which circuits it was checked against stays in the key.
 
 ## Bases
 
