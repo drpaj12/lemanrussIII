@@ -1,7 +1,50 @@
 # Seeker v2.0 public download and public tester: spec (2026-11-09)
 
-Status: SPEC ONLY, for Peter's review. Nothing in this document has been built. No public repo, secret,
+Status: SPEC ONLY, for Peter's review (section 0 records the 2026-11-09 full-sets decision, now built locally). Nothing in this document has been built. No public repo, secret,
 release, upload or workflow exists because of it. Plan: `docs/plans/2026-11-09-public-download-tester-plan.md`.
+
+## 0. Update 2026-11-09 (full sets, Peter): this section supersedes the layout, counts, subsets and quota text below
+
+Peter's decision: every benchmark of the three families (Comb, Seq, Proc) is organised as a golden, a neutral
+stimulus, and SeekerSets of exactly 100 circuits for each target (K4, K6, gates, and silicon where it was built).
+Built as `seeker-comb-v2.0`, `seeker-seq-v2.0` and `seeker-proc-v2.0` (rc5, rc8 and rc3 stay as superseded
+records); datasheets in `releases/seeker-<family>-v2.0/`.
+
+Public layout, per family and per benchmark:
+
+    <family>/<benchmark>/golden.blif.gz  golden.silicon.blif.gz (+ .v.gz for Comb and Seq)
+                         stimulus/       Comb: vectors.txt   Seq: sequence.txt   Proc: neutral-program.hex
+                         K4/ K6/ gates/ silicon/   exactly 100 circuits each (silicon also .v.gz)
+                         sets.txt  README.md  SUBMIT.md  SHA256SUMS
+
+| family | benchmarks (public) | SeekerSets | circuits | note |
+|---|---|---|---|---|
+| Comb | 10 (ISCAS-85) | 40 | 4,000 | 9 MCNC bases left out of the public download, kept in the private set; C17 and the 11 VerilogEval bases dropped |
+| Seq | 26 (ISCAS-89, OpenCores, VTR sha) | 99 | 9,900 | 12 ITC-99 bases left out (licence open); b01/b02/b06 K6, s27 K4/K6, s953 G dropped |
+| Proc | 3 (BRISC-V mcu, PicoRV32, OpenCores mips_16) | 12 | 1,200 | darkriscv removed (maintainer decision) |
+
+Private full set (all benchmarks incl. MCNC and ITC-99): Comb 19 benchmarks / 76 cells, Seq 38 / 144, Proc 3 / 12.
+
+Changes against sections 2 to 3 below:
+
+1. No short set is shipped. A cell below 100 distinct, gated circuits is dropped with its cause
+   (`answer_key/dropped_cells.json`, datasheet table); the short-cell prior of finding 1 no longer exists.
+   Option A of section 2.2 is therefore the rule, and cells were filled by top-up draws first (same pipeline and gates,
+   distinctness never relaxed).
+2. Subset names: `<benchmark>-K4`, `<benchmark>-K6`, `<benchmark>-gates`, `<benchmark>-silicon` (one SeekerSet of
+   100), `<benchmark>` (its sets together), and the family bundle `Comb`, `Seq`, `Proc`. `prev-*`, `trojans-*` and
+   `mix100` stay dropped.
+3. Quota text of section 3.2(a) applies unchanged to the three families: 1 per 24 hours, 10 in total, 3 per
+   benchmark, 3 family bundles, per identity and release.
+4. Proc is in (silicon included); the Seeker-Si rc2 processor set is folded into `seeker-proc-v2.0`.
+5. Neutral stimulus per benchmark: a vector set (Comb, 1,024 vectors), a vector sequence from reset (Seq, up to 256
+   cycles) or the neutral program (Proc). For every infected circuit of the benchmark the outputs equal the golden's
+   on it (checked, 0 differing); which circuits it was checked against stays in the key. Seq benchmarks s382,
+   s444, s5378 and s349 get under 64 cycles because every candidate vector beyond that point fires a Trojan.
+6. Release gates added for v2.0: Seq triggers that fire in the reset state or within 8 cycles for most inputs are
+   rejected (rc8 kept as the record); Proc triggers are masked while reset is active and every Proc gate is strict
+   four-state on one Odin III build (1.6.0). See the datasheets.
+7. Packages are staged locally only (`work/lr-v2-release`), the private set on the archive drive; nothing is published.
 
 Purpose (hub `docs/purpose.md`, Leman Russ III, RQ "Leman Russ benchmark release"): make Seeker's Dilemma
 v2.0 usable by outside detector authors. Measure: detector TPR, FPR and AUROC, obtained through the

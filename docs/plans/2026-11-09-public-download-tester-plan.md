@@ -10,6 +10,14 @@ Rules for every step: unittest under `tests/`, ruff and `mypy --strict` clean, l
 label, seed or key committed; tests use toy keys built in the test; commit and push after each green
 sub-step (`git push origin HEAD:<branch>`); draft PR while working, ready at the end.
 
+## Update 2026-11-09 (full sets)
+
+The layout, counts, subset names and quota text of the spec section 0 replace the older text in P1 to P8: packages
+per benchmark hold `golden`, `stimulus/` and the four SeekerSets `K4/ K6/ gates/ silicon/` of exactly 100 circuits;
+Proc is in (three cores); no short cell is shipped (P1's rule "drop cells with fewer than 100" now removes them
+from the private release too, with their cause). P2 and P6 were run for all three families on the staged v2.0
+releases (`work/lr-v2-release`); P4 baselines, P5 key packing and P7 to P10 are unchanged and wait for Peter.
+
 ## P0 Pre-checks (controller, no code)
 
 - Peter's decisions Q1 to Q6 recorded in the ledger.
