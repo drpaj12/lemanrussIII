@@ -17,6 +17,12 @@ Per benchmark the release has a golden and SeekerSets of exactly 100 circuits: `
 family bundle is `Comb`, `Seq` or `Proc`. Release names: `seeker-comb-v2.0`, `seeker-seq-v2.0`, `seeker-proc-v2.0`.
 Each benchmark package also holds a neutral stimulus that no Trojan reacts to.
 
+## Where to submit
+
+Open an issue with the form `score-request` in https://github.com/drpaj12/seeker-scoring and paste the CSV. The
+report comes back as a comment and the issue closes. Downloads:
+https://github.com/drpaj12/lemanrussIII/releases/tag/seeker-v2.0
+
 ## File format
 
 One CSV file. Header lines first, then the column row, then one row per circuit of the subset:
@@ -49,8 +55,8 @@ with `infected`, more than 10 locations, a file over 5 MiB. The message names th
 
 ## What the report shows
 
-Aggregates over a hidden random sample (70 percent of the subset, new every time): confusion
-matrix, TPR, FPR, precision, F1, accuracy, AUROC with a 95 percent interval over bases, found-rate
+Aggregates over a hidden random sample (70 of every 100-circuit set, new every time): confusion
+matrix, TPR, FPR, precision, F1, accuracy, AUROC with a 95 percent interval (over bases for a family bundle; over circuits, optimistic, for a set or benchmark), found-rate
 by Trojan count, the breakdown by mapping set, a comparison with the size-only control and the
 sanity detector, then the count bonus (accuracy, error, rounded matrix) and the location bonus
 (hit rate next to the chance level). Cells with fewer than 10 circuits are suppressed. Never

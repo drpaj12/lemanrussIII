@@ -67,7 +67,7 @@ class EndToEnd(unittest.TestCase):
             loc = rep2["bonus_location"]
             self.assertFalse(loc.get("suppressed"), loc)
             self.assertGreaterEqual(loc["hit_rate"], 0.95)  # a Trojan with an empty region misses
-            print(f"{tag}: size-only AUROC {auroc}, CI {rep['primary']['auroc_ci95_over_bases']}, "
+            print(f"{tag}: size-only AUROC {auroc}, CI {rep['primary']['auroc_ci95']}, "
                   f"oracle location {loc}")
 
     def test_comb_rc4(self) -> None:

@@ -39,3 +39,11 @@ Wrong claims are punished: two claims that both miss on an infected circuit scor
 0 at level 3. TP/FP/FN/TN are counted over claims (TN: a clean circuit with no claim). A chance
 control (same claims, random cells) is reported next to every result because regions are generous.
 Specification: `docs/specs/2026-11-02-scoring-design.md` section 10.
+
+## Key archive (maintainer)
+
+    lemanruss key-pack ANSWER_KEY PUBLIC_FAMILY_DIR --release seeker-comb-v2.0 --family comb --out key.tar.gz
+    gpg --batch --symmetric --cipher-algo AES256 --passphrase-file PASSFILE key.tar.gz
+    lemanruss key-unpack key.tar.gz --out DIR     # prints DIR/seeker-comb-v2.0-key, the --key argument
+
+The archive holds `labels`, `sets`, `trojans` counts and `subsets` for public ids only.

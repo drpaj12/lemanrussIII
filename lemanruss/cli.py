@@ -128,6 +128,17 @@ def main(argv: list[str] | None = None) -> int:
     sc.add_argument("--seed", type=int, help="sample seed (tests and audit; default random)")
     sc.add_argument("--out-dir", type=Path, help="write report.md and report.json here")
 
+    kp = subparsers.add_parser("key-pack", help="pack the trimmed key of a public release")
+    kp.add_argument("key", type=Path, help="answer_key directory (private)")
+    kp.add_argument("public", type=Path, help="public family dir: <benchmark>/sets.txt")
+    kp.add_argument("--release", required=True, help="e.g. seeker-comb-v2.0")
+    kp.add_argument("--family", required=True, choices=["comb", "seq", "proc"])
+    kp.add_argument("--out", type=Path, required=True, help="output .tar.gz (keep private)")
+
+    ku = subparsers.add_parser("key-unpack", help="unpack a key archive; prints the key dir")
+    ku.add_argument("archive", type=Path)
+    ku.add_argument("--out", type=Path, required=True)
+
     sb = subparsers.add_parser("subsets", help="draw the named subsets of a release (ids only)")
     sb.add_argument("--key", type=Path, required=True)
     sb.add_argument("--release", required=True)
@@ -158,6 +169,18 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "score":
         return _score_cmd(args)
+    if args.command == "key-pack":
+        from lemanruss.score import keypack
+
+        for fname, size in keypack.pack(args.key, args.public, args.release, args.family,
+                                        args.out).items():
+            print(f"{fname}: {size} bytes")
+        return 0
+    if args.command == "key-unpack":
+        from lemanruss.score import keypack
+
+        print(keypack.unpack(args.archive, args.out))
+        return 0
     if args.command == "subsets":
         from lemanruss.score.subsets import make
 
@@ -406,6 +429,9 @@ def _score_cmd(args: argparse.Namespace) -> int:
     except (SubmissionError, ledger.RateLimitError) as exc:
         print(f"REFUSED: {exc}")
         return 2
+    except OSError as exc:
+        print(f"FAILED: file error, ledger not updated ({type(exc).__name__}); not scored")
+        return 3
     text = render(rep)
     if args.out_dir:
         args.out_dir.mkdir(parents=True, exist_ok=True)
