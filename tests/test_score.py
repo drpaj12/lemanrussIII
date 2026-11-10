@@ -202,12 +202,17 @@ class ScoreTests(unittest.TestCase):
     def test_perfect_detector(self) -> None:
         rep = self.run_score(csv_for(self.ids, self.key, loc=True), seed=5)
         p = rep["primary"]
-        self.assertEqual(rep["scored_circuits"], 70)
+        cells: dict[tuple[str, str], int] = {}
+        for c in self.ids:
+            k = (self.key.base_of[c], self.key.set_of[c])
+            cells[k] = cells.get(k, 0) + 1
+        self.assertEqual(rep["scored_circuits"], sum(round(0.7 * n) for n in cells.values()))
+        n_scored = rep["scored_circuits"]
         self.assertEqual(p["tpr"], 1.0)
         self.assertEqual(p["fpr"], 0.0)
         self.assertEqual(p["auroc"], 1.0)
         c = p["confusion"]
-        self.assertEqual(c["tp"] + c["fn"] + c["fp"] + c["tn"], 70)
+        self.assertEqual(c["tp"] + c["fn"] + c["fp"] + c["tn"], n_scored)
         self.assertEqual(rep["bonus_count"]["exact"], 1.0)
         self.assertEqual(rep["bonus_location"]["hit_rate"], 1.0)
         self.assertLess(rep["bonus_location"]["chance_rate"], 0.5)

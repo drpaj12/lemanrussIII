@@ -18,6 +18,7 @@ from lemanruss.score.submission import Submission, parse
 MIN_CELL = 10  # a breakdown cell with fewer sampled circuits is suppressed
 COUNT_STEP = 5  # cells of the count matrix are rounded to a multiple of this
 SAMPLE_FRACTION = 0.7
+SET_PART = {"K4": "K4", "K6": "K6", "gates": "G", "silicon": "silicon"}
 BASELINES = Path(__file__).resolve().parents[1] / "data" / "baselines.json"
 
 
@@ -32,6 +33,29 @@ def chance_hit(n_nets: int, region: int, shown: int) -> float:
     if shown > n_nets - region:
         return 1.0
     return 1.0 - comb(n_nets - region, shown) / comb(n_nets, shown)
+
+
+def unit_of(subset: str, key: Key, subsets: dict[str, list[str]]) -> tuple[str, str | None]:
+    """Quota unit of a subset: (cell | benchmark | family, benchmark name or None for family)."""
+    ids = subsets[subset]
+    bases = {key.base_of[c] for c in ids}
+    if len(bases) > 1:
+        return ledger.UNIT_FAMILY, None
+    base = next(iter(bases))
+    sets = {key.set_of[c] for c in ids}
+    return (ledger.UNIT_CELL if len(sets) == 1 else ledger.UNIT_BENCHMARK), base
+
+
+def draw_sample(ids: list[str], key: Key, rng: random.Random) -> list[str]:
+    """Hidden sample: 70 percent of every (benchmark, set) cell, drawn inside the submission."""
+    cells: dict[tuple[str, str], list[str]] = {}
+    for c in ids:
+        cells.setdefault((key.base_of[c], key.set_of[c]), []).append(c)
+    out: list[str] = []
+    for cell in sorted(cells):
+        members = cells[cell]
+        out += rng.sample(members, min(len(members), max(1, round(SAMPLE_FRACTION * len(members)))))
+    return sorted(out)
 
 
 def _detection(sample: list[str], sub: Submission, key: Key) -> dict[str, Any]:
@@ -105,17 +129,22 @@ def _loc_tier(sample: list[str], sub: Submission, key: Key) -> dict[str, Any]:
 
 def _baseline(release: str, subset: str, det: dict[str, Any]) -> list[dict[str, Any]]:
     data = json.loads(BASELINES.read_text(encoding="utf-8")).get(release, {})
-    part = next((s for s in ("K4", "K6", "G") if subset.endswith("-" + s)), "all")
+    part = next((p for s, p in SET_PART.items() if subset.endswith("-" + s)), "all")
     ci = det["ci"]
     out = []
     for name, vals in data.items():
-        if part not in vals:
+        if not isinstance(vals, dict):
             continue
-        b = vals[part]
+        # a per-benchmark entry (key = the unit name) wins over the full-release set figure
+        pick = subset if subset in vals else part
+        if pick not in vals:
+            continue
+        b = vals[pick]
         verdict = "n/a"
         if det["auroc"] is not None and ci is not None:
             verdict = ("above" if ci[0] > b else "below" if ci[1] < b else "not distinguishable")
-        out.append({"detector": name, "auroc": b, "scope": f"full release, set {part}",
+        scope = f"unit {subset}" if pick == subset else f"full release, set {part}"
+        out.append({"detector": name, "auroc": b, "scope": scope,
                     "verdict": verdict})
     return out
 
@@ -127,28 +156,35 @@ def score(text: str, key: Key, release: str, subsets: dict[str, list[str]], *,
     sub = parse(text, release, subsets)
     name = submitter or sub.headers["team"]
     t_now = time.time() if now is None else now
-    if ledger_path is not None:
-        ledger.check(ledger_path, name, release, t_now, limits)
     subset = sub.headers["subset"]
     ids = sorted(subsets[subset])
-    default_n = max(2, round(SAMPLE_FRACTION * len(ids)))
-    n_sample = hidden_sample if hidden_sample is not None else default_n
-    if not 2 <= n_sample <= len(ids):
+    unit, benchmark = unit_of(subset, key, subsets)
+    if ledger_path is not None:
+        ledger.check(ledger_path, name, release, t_now, limits, unit, benchmark)
+    if hidden_sample is not None and not 2 <= hidden_sample <= len(ids):
         raise ValueError(f"hidden sample must be between 2 and {len(ids)}")
     drawn = seed if seed is not None else secrets.randbits(62)
-    sample = sorted(random.Random(drawn).sample(ids, n_sample))
+    rng = random.Random(drawn)
+    sample = (sorted(rng.sample(ids, hidden_sample)) if hidden_sample is not None
+              else draw_sample(ids, key, rng))
+    n_sample = len(sample)
     det = _detection(sample, sub, key)
-    ci = bootstrap_auroc(det["by_base"], drawn + 1)
+    over = "bases" if unit == ledger.UNIT_FAMILY else "circuits"
+    groups = (det["by_base"] if over == "bases"
+              else {c: [(key.infected(c), sub.rows[c].score)] for c in sample})
+    ci = bootstrap_auroc(groups, drawn + 1)
     det["ci"] = ci
     c: Confusion = det["conf"]
     report: dict[str, Any] = {
         "release": release, "subset": subset, "detector": sub.headers["detector"],
-        "team": sub.headers["team"], "subset_size": len(ids), "scored_circuits": n_sample,
+        "team": sub.headers["team"], "unit": unit,
+        "subset_size": len(ids), "scored_circuits": n_sample,
         "primary": {
             "confusion": {"tp": c.tp, "fp": c.fp, "tn": c.tn, "fn": c.fn},
             **{k: r2(v) for k, v in det["rates"].items()},
             "auroc": r2(det["auroc"]),
-            "auroc_ci95_over_bases": None if ci is None else [r2(ci[0]), r2(ci[1])],
+            "auroc_ci95": None if ci is None else [r2(ci[0]), r2(ci[1])],
+            "auroc_ci95_over": over,
             "by_set": {s: _cell(sample, sub, key, lambda x, s=s: key.set_of[x] == s)
                        for s in sorted(set(key.set_of.values()))},
             "found_by_true_trojan_count": _by_true_count(sample, sub, key)},
@@ -156,7 +192,8 @@ def score(text: str, key: Key, release: str, subsets: dict[str, list[str]], *,
         "bonus_location": _loc_tier(sample, sub, key),
         "baselines": _baseline(release, subset, det)}
     if ledger_path is not None:
-        ledger.record(ledger_path, name, release, subset, len(ids), n_sample, drawn, t_now)
+        ledger.record(ledger_path, name, release, subset, len(ids), n_sample, drawn, t_now,
+                      unit, benchmark)
     return report
 
 
@@ -167,6 +204,8 @@ def _f(x: Any) -> str:
 def render(rep: dict[str, Any]) -> str:
     p = rep["primary"]
     c = p["confusion"]
+    note = ("" if p["auroc_ci95_over"] == "bases" else
+            " Interval over circuits, optimistic: circuits of one benchmark share a golden.")
     L = [f"# Seeker scoring report: {rep['detector']} ({rep['team']})", "",
          f"Release `{rep['release']}`, subset `{rep['subset']}`: scored on a hidden random "
          f"sample of "
@@ -177,8 +216,8 @@ def render(rep: dict[str, Any]) -> str:
          f"| clean | FP {c['fp']} | TN {c['tn']} |", "",
          f"TPR {_f(p['tpr'])}, FPR {_f(p['fpr'])}, precision {_f(p['precision'])}, "
          f"F1 {_f(p['f1'])}, accuracy {_f(p['accuracy'])}.", "",
-         f"AUROC {_f(p['auroc'])}, 95% interval over bases "
-         f"{_f(p['auroc_ci95_over_bases'])}.", "",
+         f"AUROC {_f(p['auroc'])}, 95% interval over {p['auroc_ci95_over']} "
+         f"{_f(p['auroc_ci95'])}.{note}", "",
          "Infected circuits found, by true number of Trojans (multi-Trojan circuits must be "
          "found):",
          ""]
