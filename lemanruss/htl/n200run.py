@@ -193,7 +193,8 @@ def tables(root: Path) -> list[str]:
     trojans: dict[str, list[Json]] = json.loads((key / "trojans.json").read_text(encoding="utf-8"))
     fails: list[Json] = json.loads((key / "failures.json").read_text(encoding="utf-8"))
     names = ("K4", "K6", "G", "S") if any(
-        "S" in v["sets"] for v in sets.values()) else ("K4", "K6", "G")
+        isinstance(v["sets"], dict) and "S" in v["sets"] for v in sets.values()) \
+        else ("K4", "K6", "G")
     has_s = "S" in names
     out = ["### Bases and sets", "",
            "| base | source | gates | K4 drawn / infected / clean | "

@@ -207,12 +207,13 @@ class TestShippedPrograms(unittest.TestCase):
 
         self.assertTrue(shipped_silence_ok({}))
 
-    def test_shipped_silence_ok_gates_on_rtl_and_nl_only(self) -> None:
+    def test_shipped_silence_ok_is_strict_four_state(self) -> None:
         from lemanruss.htl.proc_build import shipped_silence_ok
 
-        # iverilog disagreeing alone (the recorded, non-gating four-state difference) must not
-        # fail the gate; rtl or nl disagreeing must.
+        # v2.0: iverilog is the second four-state engine and gates like rtl and nl.
         self.assertTrue(shipped_silence_ok(
+            {"firmware": {"rtl": True, "nl": True, "iverilog": True}}))
+        self.assertFalse(shipped_silence_ok(
             {"firmware": {"rtl": True, "nl": True, "iverilog": False}}))
         self.assertFalse(shipped_silence_ok(
             {"firmware": {"rtl": False, "nl": True, "iverilog": True}}))
