@@ -259,3 +259,17 @@ class DocExampleTests(unittest.TestCase):
         ids = re.findall(r"^(sc\d+),", text, re.M)
         sub = parse(text, "seeker-comb-v2.0", {"C432-K4": ids})
         self.assertEqual(len(sub.rows), len(ids))
+
+
+class ShippedBaselines(unittest.TestCase):
+    """The shipped baselines.json is keyed by the release names the scorer looks up."""
+
+    def test_every_release_has_baselines_for_every_scope(self) -> None:
+        from lemanruss.score import scorer
+
+        det: dict[str, Any] = {"auroc": 0.55, "ci": (0.5, 0.6)}
+        for rel in ("seeker-comb-v2.0", "seeker-seq-v2.0", "seeker-proc-v2.0"):
+            for subset in ("x-K4", "x-K6", "x-gates", "x-silicon", "x"):
+                got = scorer._baseline(rel, subset, det)
+                self.assertEqual({b["detector"] for b in got}, {"size-only", "sanity"},
+                                 (rel, subset))
