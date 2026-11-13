@@ -14,19 +14,15 @@ Stages, in order:
 4. **Gates and releases:** witness replay in Odin III, equivalence by ABC to the source, label-leak gates, then datasheets and checksums.
 5. **Detector baselines and scoring:** a submission format and a scorer that does not publish the answer key.
 
-Seeker v2.0 (full sets, 2026-11-09): `seeker-comb-v2.0`, `seeker-seq-v2.0` and `seeker-proc-v2.0` give every benchmark a golden, a neutral stimulus and SeekerSets of exactly 100 circuits per target (K4, K6, gates, silicon); records in `releases/seeker-*-v2.0/`. The release candidates below are superseded.
+Seeker v2.0 (full sets, 2026-11-09): `seeker-comb-v2.0`, `seeker-seq-v2.0` and `seeker-proc-v2.0` give every benchmark a golden, a neutral stimulus and SeekerSets of exactly 100 circuits per target (K4, K6, gates, silicon); records in `releases/seeker-*-v2.0/`.
 
-Releases: Seeker-Comb v2.0-rc5 (5809 circuits, 31 bases), Seeker-Seq v2.0-rc8 (11005 circuits, 38 bases: the 36 rc7 bases unchanged plus OpenCores ca_prng and i2c; rc7 superseded by rc8 as a superset; magic-number triggers, no Trojan
-flip-flops) and a Seeker-Proc pilot3 of four circuits. Seeker-Seq v2.0-rc6 (10735 circuits) is superseded by rc7: on rc6 the flip-flop count
-alone separated the labels (AUROC 0.948) because the counter and pattern triggers and the energy ring add flip-flops; rc7 adds none (exact
-flip-flop equality with the golden before ABC; AUROC 0.500 after), and the class-only GNNs that reached 0.98 to 1.00 on Seq rc5 / rc6 fall to
-0.48 and 0.53 (size control 0.59). Headline (from the paper, kept locally by the author): detectors run on the
+Release: Seeker's Dilemma v2.0 ([`seeker-v2.0`](https://github.com/drpaj12/lemanrussIII/releases/tag/seeker-v2.0)): Seeker-Comb (7638 circuits, 19 benchmarks), Seeker-Seq (14474 circuits, 38 benchmarks) and Seeker-Proc (1200 circuits, three processor cores: mcu, mips_16, picorv32; darkriscv is not part of v2.0), every benchmark with sets of exactly 100 circuits per target (K4, K6, gates, silicon). Datasheets: `releases/seeker-*-v2.0/DATASHEET.md`. Seeker-Seq has no Trojan flip-flops: on its earlier candidate rc6 the flip-flop count alone separated the labels (AUROC 0.948) because the counter and pattern triggers and the energy ring add flip-flops; rc7 added none (exact flip-flop equality with the golden before ABC; AUROC 0.500 after), and the class-only GNNs that reached 0.98 to 1.00 on Seq rc5 / rc6 fell to 0.48 and 0.53 (size control 0.59). The release candidates are kept under `releases/` and are superseded. Headline (from the paper, kept locally by the author): detectors run on the
 earlier releases find nothing on Seeker-Comb (AUROC 0.48 to 0.55); on Seeker-Seq they found almost everything through the Trojans' own
 flip-flops, and rc7 removes that footprint. Release gates caught six kinds of label leak. Results: `docs/results-round9.md`.
 
 ## Features
 
-Status: **works** = a `lemanruss` command or module on `main` with tests; **released** = a release candidate
+Status: **works** = a `lemanruss` command or module on `main` with tests; **released** = a release
 checked in under `releases/`; **in progress** = specified or on a branch, not merged. Defensive research: the
 circuits are Trojans to detect. Design and numbers: `docs/specs/`, `docs/results-*.md`. The paper is kept locally by the author.
 
@@ -38,9 +34,9 @@ circuits are Trojans to detect. Design and numbers: `docs/specs/`, `docs/results
 | Seeker v2.0 families: Seeker-Comb and Seeker-Seq (a golden and three mapping sets per base: LUT k=4, LUT k=6, AND/OR/NOT gates; 10% to 70% infected, one to three Trojans) | works | `lemanruss family`, `lemanruss n200`; `lemanruss/htl/families.py`, `n200*.py` |
 | Obfuscation: ABC restructurings (18 scripts) and mapping to the three sets, so structure does not betray the Trojan | works | `lemanruss restructure`, `lemanruss/htl/obfuscate.py`, `restructure.py` |
 | Verification and release gates: witness replay in Odin III, equivalence by ABC to the source and to the golden with triggers off, label-leak gates (rejected draws are listed, never shipped) | works | `lemanruss verify`, `family-verify`, `release-report`; `lemanruss/htl/relverify.py` |
-| Releases: Seeker-Comb v2.0-rc5 (5809 circuits, 31 bases) and Seeker-Seq v2.0-rc8 (11005 circuits, 38 bases; rc7 kept under `releases/`) with datasheets and checksums; earlier candidates (rc1, rc2, rc4, Seq rc5, Seq rc6 (superseded by rc7: Trojan flip-flops separated its labels), Proc pilot, pilot2) kept under `releases/` as superseded | released | `releases/`, `lemanruss release` |
-| Seeker-Proc: processor images (RV32I) lowered to netlists, pilot3 with four circuits (magic-word triggers only, no added flip-flop) | released (pilot) | `releases/seeker-proc-v2.0-pilot3`, `lemanruss/htl/proc_*.py`, `rv32i.py` |
-| Seeker-Si v2.0-rc1: 100 standard-cell (sky130_fd_sc_hd) circuits on mmuart, simple_spi, verilog_cordic_core (34 clean, 66 infected, 103 Trojans). A NEW set with its own bases: not the same benchmarks as Seeker comb/seq/proc, do not compare per base | released (rc1) | `releases/seeker-si-v2.0-rc1`, `docs/results-si-rc1.md`, `lemanruss/htl/si_set.py` |
+| Release Seeker's Dilemma v2.0: Seeker-Comb (7638 circuits), Seeker-Seq (14474) and Seeker-Proc (1200) with datasheets and checksums; earlier candidates (rc1 to rc8, Proc pilots, Si rc1 and rc2) kept under `releases/` as superseded | released | `releases/seeker-*-v2.0`, `lemanruss release` |
+| Seeker-Proc: processor images (RV32I) lowered to netlists, three cores (mcu, mips_16, picorv32), magic-word triggers, no added flip-flop | released | `releases/seeker-proc-v2.0`, `lemanruss/htl/proc_*.py`, `rv32i.py` |
+| Seeker-Si: the silicon set (sky130_fd_sc_hd standard cells, with cell Verilog) of every v2.0 family; the earlier Si rc1 (100 circuits on mmuart, simple_spi, verilog_cordic_core) is a separate, superseded set, do not compare per base | released | `releases/seeker-*-v2.0`, `docs/results-si-rc1.md`, `lemanruss/htl/si_set.py` |
 | Rareness report: per-circuit and pooled tables of trigger activation probability | works | `lemanruss/htl/rareness.py`, `answer_key/rareness.md` in each release |
 | RTL testbenches and `sim_tb` against iverilog; energy payload toggle counts; bases from the Mimir registry | works | `lemanruss rtl-tb`, `lemanruss energy`, `lemanruss bases` |
 | Detector baselines: size-only control, rare-signal score, graphlet drift, exact-duplicate/style sanity check, GNNs (gnn-a, gnn-yasaei) on Comb rc4 and Seq rc5 | works | `lemanruss/detect/`, `docs/results-detectors.md`, `docs/specs/2026-11-01-detector-baselines-design.md` |
